@@ -12,11 +12,20 @@ import type {
 } from "../platform/roomTypes";
 import { EMOTES, MAX_STREAM_BYTES } from "../platform/roomTypes";
 import { createPackHydrator, type ContentEnv } from "../content/remote";
+import { limitNameFor, SocketLimiter } from "../platform/rateLimit";
 
 export interface Env extends ContentEnv {
   ROOM: DurableObjectNamespace;
+  AUTH: DurableObjectNamespace;
+  RATE_LIMITER: DurableObjectNamespace;
   /** Comma-separated origins allowed to open a socket; empty allows any. */
   ALLOWED_ORIGINS?: string;
+  /**
+   * HMAC secret for identity tokens. Optional: without it the auth object
+   * generates one and keeps it, so a fresh deploy works with no setup — at the
+   * cost of everyone being signed out if that object is ever wiped.
+   */
+  AUTH_SECRET?: string;
 }
 
 const MAX_MEMBERS = 12;
@@ -32,6 +41,21 @@ export const DISCONNECT_GRACE_MS = 8_000;
 
 interface RoomStorage {
   code: string;
+  /**
+   * True once the room was deliberately created.
+   *
+   * Durable Objects spring into existence on first use, so before this flag a
+   * probe for any code produced a real, empty room and there was no way to
+   * tell a wrong guess from a right one. Joining now requires a room that
+   * somebody created.
+   */
+  created: boolean;
+  /** Who created it. Host by default, and the only one who can hand it over. */
+  ownerId: string | null;
+  /** Locked rooms admit nobody new — the host's answer to an unwanted joiner. */
+  locked: boolean;
+  /** Player ids the host has removed. They cannot come back. */
+  banned: string[];
   gameId: string | null;
   /** Options passed to the module when a match starts (e.g. rules variant). */
   gameOptions: Record<string, unknown>;
@@ -52,6 +76,10 @@ interface RoomStorage {
 function emptyRoom(code: string): RoomStorage {
   return {
     code,
+    created: false,
+    ownerId: null,
+    locked: false,
+    banned: [],
     gameId: null,
     gameOptions: {},
     phase: "lobby",
@@ -108,12 +136,38 @@ export class RoomDO {
     return this.ctx.getTags(ws)[0] ?? null;
   }
 
+  /**
+   * Rate-limit state for one socket.
+   *
+   * Keyed by the socket object, so it dies with the connection and survives
+   * hibernation the same way the socket does — a hibernated socket that wakes
+   * up simply gets a fresh allowance, which is no worse than reconnecting.
+   */
+  private limiters = new WeakMap<WebSocket, SocketLimiter>();
+
+  private limiterFor(ws: WebSocket): SocketLimiter {
+    let limiter = this.limiters.get(ws);
+    if (!limiter) this.limiters.set(ws, (limiter = new SocketLimiter()));
+    return limiter;
+  }
+
   private module(room: RoomStorage): AnyGameModule | null {
     return room.gameId ? getGame(room.gameId) : null;
   }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+
+    // Internal routes, reachable only from the Worker in front of this object.
+    if (url.pathname === "/__create") return this.create(request);
+    if (url.pathname === "/__exists") return this.exists();
+
+    /**
+     * The player id is supplied by the Worker AFTER it has verified a signed
+     * ticket — it is not a claim from the client any more. That was the hole:
+     * anyone who knew your id could connect as you and be handed your hand,
+     * your dice, your secret role.
+     */
     const playerId = url.searchParams.get("playerId");
     const code = url.pathname.split("/").pop() ?? "";
     if (!playerId) return new Response("playerId required", { status: 400 });
@@ -121,11 +175,18 @@ export class RoomDO {
       return new Response("expected websocket upgrade", { status: 426 });
     }
 
+    const room = await this.load(code);
+    if (!room.created) return new Response("no such room", { status: 404 });
+    if (room.banned.includes(playerId)) return new Response("removed from this room", { status: 403 });
+    // A locked room still lets its own members back in after a reload.
+    if (room.locked && !room.members.some((m) => m.id === playerId)) {
+      return new Response("room is locked", { status: 403 });
+    }
+
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
     this.ctx.acceptWebSocket(server, [playerId]);
 
-    const room = await this.load(code);
     room.code = room.code || code;
 
     const name = sanitizeName(url.searchParams.get("name") ?? "");
@@ -171,10 +232,37 @@ export class RoomDO {
       return this.sendError(ws, "invalid message");
     }
 
+    /**
+     * Per-connection rate limiting, in memory.
+     *
+     * Deliberately not a Durable Object hop: this is the hot path, and a
+     * drawing pushes dozens of frames a second. Each message type has its own
+     * bucket, so chat spam cannot starve the moves of the player next to them.
+     */
+    const limiter = this.limiterFor(ws);
+    const verdict = limiter.check(limitNameFor(msg.type));
+    if (!verdict.allowed) {
+      if (limiter.abusive) {
+        // Long past "enthusiastic". Close it; the ticket endpoint rate limits
+        // how quickly they can come back.
+        ws.close(1008, "too many messages");
+        return;
+      }
+      // Stream frames are fire-and-forget; an error per dropped frame would
+      // itself be a flood.
+      if (msg.type !== "stream") {
+        this.sendError(ws, `slow down — try again in ${Math.ceil(verdict.retryAfterMs / 1000)}s`);
+      }
+      return;
+    }
+
     const room = await this.load();
     const me = room.members.find((m) => m.id === playerId);
     if (!me) return this.sendError(ws, "you are not in this room");
     const isHost = this.hostId(room) === playerId;
+
+    /** Player ids whose sockets to close once everyone has the final state. */
+    const closeAfterBroadcast: string[] = [];
 
     switch (msg.type) {
       case "hello":
@@ -262,12 +350,44 @@ export class RoomDO {
         break;
       }
 
+      case "lock": {
+        if (!isHost) return this.sendError(ws, "only the host can lock the room");
+        room.locked = !!msg.locked;
+        this.pushSystem(room, room.locked ? "room locked — no new players" : "room unlocked");
+        break;
+      }
+
+      case "kick": {
+        if (!isHost) return this.sendError(ws, "only the host can remove players");
+        if (msg.playerId === playerId) return this.sendError(ws, "you cannot remove yourself");
+        const target = room.members.find((m) => m.id === msg.playerId);
+        if (!target) return this.sendError(ws, "no such player");
+
+        room.members = room.members.filter((m) => m.id !== msg.playerId);
+        room.seats = room.seats.filter((id) => id !== msg.playerId);
+        // Banned rather than merely removed: otherwise they reconnect in a
+        // second and the host has achieved nothing.
+        if (!room.banned.includes(msg.playerId)) room.banned.push(msg.playerId);
+        this.pushSystem(room, `${target.name} was removed`);
+        // Closed after the broadcast below, not here: the person being removed
+        // should receive the final state — including the system message saying
+        // what happened — before their socket goes away.
+        closeAfterBroadcast.push(msg.playerId);
+        break;
+      }
+
       default:
         return this.sendError(ws, "unknown message");
     }
 
     await this.save(room);
     this.broadcast(room);
+
+    for (const id of closeAfterBroadcast) {
+      for (const socket of this.ctx.getWebSockets()) {
+        if (this.socketPlayerId(socket) === id) socket.close(1008, "removed from the room");
+      }
+    }
   }
 
   /** Starts (or restarts) a match. Returns an error string, or null on success. */
@@ -321,6 +441,44 @@ export class RoomDO {
       this.scheduleTurn(room);
     }
     return null;
+  }
+
+  /**
+   * Creates the room. Called once, by the Worker, on POST /rooms.
+   *
+   * Idempotent for the same owner so a retried request is harmless, but it
+   * will not quietly re-own an existing room.
+   */
+  private async create(request: Request): Promise<Response> {
+    const { code, ownerId } = (await request.json().catch(() => ({}))) as {
+      code?: string;
+      ownerId?: string;
+    };
+    if (!code || !ownerId) return new Response("code and ownerId required", { status: 400 });
+
+    const room = await this.load(code);
+    if (room.created) {
+      // Astronomically unlikely with 32^8 codes, but a collision must not
+      // silently drop someone into a stranger's room.
+      return Response.json({ created: false, reason: "already exists" }, { status: 409 });
+    }
+    room.created = true;
+    room.code = code;
+    room.ownerId = ownerId;
+    await this.save(room);
+    return Response.json({ created: true, code });
+  }
+
+  /** Does this room exist? The only oracle for a code, and rate limited. */
+  private async exists(): Promise<Response> {
+    const room = await this.load();
+    return Response.json({
+      exists: room.created,
+      locked: room.locked,
+      members: room.members.length,
+      phase: room.phase,
+      gameId: room.gameId,
+    });
   }
 
   /**
@@ -577,11 +735,25 @@ export class RoomDO {
       // Resolved per snapshot, not cached: content packs can be added to the
       // store while a lobby sits open, and the picker should show them.
       optionGroups: module?.listOptionGroups?.() ?? [],
+      locked: room.locked,
     };
   }
 
+  /**
+   * Sends to one socket, tolerating a dead one.
+   *
+   * A socket can close between the moment the room decides to broadcast and
+   * the moment it writes — a player closing their tab is exactly that race,
+   * and kicking someone guarantees it. Without this guard the throw escaped
+   * the message handler mid-broadcast and everyone *after* the dead socket in
+   * the list silently missed that update.
+   */
   private send(ws: WebSocket, msg: ServerMessage): void {
-    ws.send(JSON.stringify(msg));
+    try {
+      ws.send(JSON.stringify(msg));
+    } catch {
+      // Gone. The close handler will tidy up the membership.
+    }
   }
 
   private sendError(ws: WebSocket, message: string): void {

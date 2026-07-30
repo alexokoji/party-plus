@@ -2,22 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getDisplayName, setDisplayName } from "../client/deviceId";
+import { createRoom as createRoomOnServer, ensureIdentity, getDisplayName, setDisplayName } from "../client/identity";
+import { normalizeRoomCode } from "../platform/roomCodes";
+import { AccountPanel } from "./AccountPanel";
 import type { GameMeta } from "../platform/types";
 
-/** Ambiguous characters (0/O, 1/I) are omitted so codes survive being read aloud. */
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const CODE_LENGTH = 5;
-
-export function generateRoomCode(random: () => number = Math.random): string {
-  let code = "";
-  for (let i = 0; i < CODE_LENGTH; i++) code += CODE_ALPHABET[Math.floor(random() * CODE_ALPHABET.length)];
-  return code;
-}
-
-export function normalizeRoomCode(input: string): string {
-  return input.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
-}
+export { normalizeRoomCode };
 
 export interface GameGalleryProps {
   games: GameMeta[];
@@ -33,6 +23,8 @@ export function GameGallery({ games }: GameGalleryProps) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setName(getDisplayName()), []);
 
@@ -41,9 +33,25 @@ export function GameGallery({ games }: GameGalleryProps) {
     setDisplayName(value);
   }
 
-  function createRoom(gameId?: string) {
-    const room = generateRoomCode();
-    router.push(gameId ? `/online/${room}?game=${gameId}` : `/online/${room}`);
+  /**
+   * Rooms are minted by the server now.
+   *
+   * A code generated here could only ever be as unguessable as Math.random,
+   * and worse, the old flow meant any code someone typed brought a room into
+   * existence — so a wrong guess was indistinguishable from a right one.
+   */
+  async function createRoom(gameId?: string) {
+    if (creating) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const { token } = await ensureIdentity();
+      const room = await createRoomOnServer(token);
+      router.push(gameId ? `/online/${room}?game=${gameId}` : `/online/${room}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create a room.");
+      setCreating(false);
+    }
   }
 
   function joinRoom(e: React.FormEvent) {
@@ -61,8 +69,8 @@ export function GameGallery({ games }: GameGalleryProps) {
         </label>
 
         <div className="launcher-actions">
-          <button type="button" onClick={() => createRoom()}>
-            🎲 Create a room
+          <button type="button" disabled={creating} onClick={() => void createRoom()}>
+            {creating ? "Creating…" : "🎲 Create a room"}
           </button>
           <form className="join-form" onSubmit={joinRoom}>
             <input
@@ -77,7 +85,10 @@ export function GameGallery({ games }: GameGalleryProps) {
           </form>
         </div>
         <p className="launcher-hint">Create a room and share the link, or type a friend&apos;s code.</p>
+        {error && <p className="error-note">{error}</p>}
       </div>
+
+      <AccountPanel onName={setName} />
 
       <h2 className="gallery-heading">Games</h2>
       <div className="game-gallery">
@@ -90,8 +101,8 @@ export function GameGallery({ games }: GameGalleryProps) {
               {game.estimatedMinutes ? ` · ~${game.estimatedMinutes} min` : ""}
               {game.hasHiddenState ? " · hidden info" : ""}
             </p>
-            <button type="button" onClick={() => createRoom(game.id)}>
-              Create room
+            <button type="button" disabled={creating} onClick={() => void createRoom(game.id)}>
+              {creating ? "Creating…" : "Create room"}
             </button>
           </article>
         ))}

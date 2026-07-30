@@ -154,13 +154,47 @@ Durable Object usage is billed on requests and duration; sustained traffic
 eventually needs the $5/month Workers Paid plan. Vercel's hobby tier covers the
 web app but is not licensed for commercial use.
 
+## Accounts and the signing secret
+
+Identity is a token the server signs. Everyone gets one — guests included —
+which is what stops one player connecting as another.
+
+The signing secret is optional. Left unset, the auth object generates one on
+first use and keeps it, so a fresh deploy works with no setup. The cost is that
+wiping that object signs everybody out. To set it explicitly:
+
+```bash
+npx wrangler secret put AUTH_SECRET
+```
+
+Use a long random value. Changing it later invalidates every existing token,
+which signs everyone out but breaks nothing else.
+
+Accounts live in a single `AuthDO` instance. Passwords are stored as
+PBKDF2-HMAC-SHA256 with a per-user salt and 150,000 iterations — never in plain
+text, and never sent back to a client.
+
+## Rate limits
+
+Two layers, both on by default:
+
+- **Per IP**, in `RateLimiterDO`, on the endpoints reachable from outside:
+  guest identities, registration, login, room creation, and room tickets. The
+  ticket limit is the one that matters most — it is the only way to discover
+  whether a room code exists, so it is what anyone guessing codes runs into.
+- **Per connection**, in memory inside each room, with separate budgets for
+  chat, moves and drawing frames. A player flooding chat cannot starve the
+  moves of the person next to them.
+
+Both fail *open*: if the limiter itself is unavailable, requests proceed. A
+rate limiter that takes the site down when it breaks is a worse outage than
+the abuse it prevents.
+
 ## Things this deployment does not have
 
-- **No accounts, no persistence between rooms.** Player identity is a random id
-  in `localStorage`. Clearing site data means a new identity. Postgres for
-  accounts/ELO/history and Redis for matchmaking were scoped but never built.
-- **No rate limiting** beyond Cloudflare's defaults.
-- **Room codes are guessable.** Anyone with a code can join; there are no
-  private rooms.
+- **No email, so no password reset.** A forgotten password is a lost account.
+- **No moderation tools** beyond the host's lock and kick, which are per-room.
 - **A room's Durable Object lives until it is evicted.** There is no explicit
   cleanup of finished rooms.
+- **No ELO, history or matchmaking.** Accounts exist; nothing is recorded
+  against them yet.

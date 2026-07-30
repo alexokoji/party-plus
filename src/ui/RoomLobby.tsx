@@ -12,6 +12,10 @@ export interface RoomLobbyProps {
   onReady: (ready: boolean) => void;
   onSpectate: (spectate: boolean) => void;
   onStart: () => void;
+  /** Host only: close the room to new players. */
+  onLock: (locked: boolean) => void;
+  /** Host only: remove someone and keep them out. */
+  onKick: (playerId: string) => void;
 }
 
 /** Pre-match lobby: pick a game, take a seat or spectate, ready up. */
@@ -24,6 +28,8 @@ export function RoomLobby({
   onReady,
   onSpectate,
   onStart,
+  onLock,
+  onKick,
 }: RoomLobbyProps) {
   const me = snapshot.members.find((m) => m.id === playerId);
   const seated = snapshot.members.filter((m) => m.seated);
@@ -128,6 +134,16 @@ export function RoomLobby({
                 {m.name}
                 {snapshot.hostId === m.id ? " ★" : ""}
                 {m.id === playerId ? " (you)" : ""}
+                {isHost && m.id !== playerId && (
+                  <button
+                    type="button"
+                    className="kick-button"
+                    title={`Remove ${m.name}`}
+                    onClick={() => onKick(m.id)}
+                  >
+                    ✕
+                  </button>
+                )}
               </span>
               <span className="member-status">
                 {!m.connected ? "offline" : m.ready ? "✓ ready" : "not ready"}
@@ -174,7 +190,19 @@ export function RoomLobby({
               Start match
             </button>
           )}
+
+          {isHost && (
+            <button type="button" className="ghost" onClick={() => onLock(!snapshot.locked)}>
+              {snapshot.locked ? "🔓 Unlock room" : "🔒 Lock room"}
+            </button>
+          )}
         </div>
+
+        {snapshot.locked && (
+          <p className="hint">
+            🔒 Locked — nobody new can join. People already here can still reconnect.
+          </p>
+        )}
 
         {isHost && !game && <p className="hint">Pick a game above to start.</p>}
         {isHost && game && !enoughPlayers && (

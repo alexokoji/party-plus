@@ -13,6 +13,16 @@ enabled = true
 name = "ROOM"
 class_name = "RoomDO"
 
+# The user directory: accounts, and the token signing secret.
+[[durable_objects.bindings]]
+name = "AUTH"
+class_name = "AuthDO"
+
+# Per-IP token buckets for the endpoints reachable from outside.
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiterDO"
+
 # SQLite-backed Durable Objects.
 #
 # The original key-value backend (`new_classes`) requires the Workers Paid
@@ -26,11 +36,23 @@ class_name = "RoomDO"
 tag = "v1"
 new_sqlite_classes = ["RoomDO"]
 
+# Accounts and rate limiting. A separate tag, so this is correct whether or not
+# v1 has already been deployed — never edit a tag that has shipped.
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["AuthDO", "RateLimiterDO"]
+
 [vars]
 # Comma-separated origins allowed to open a room socket. Empty means "allow
 # any", which is right for local dev and a private test. Set it to the web
 # app's origin once that is deployed, then redeploy the Worker.
 ALLOWED_ORIGINS = ""
+
+# AUTH_SECRET signs identity tokens. Optional: leave it unset and the auth
+# object generates one on first use and keeps it, so a fresh deploy works with
+# no setup. Set it explicitly — as a secret, not here — if you want tokens to
+# survive that object being wiped:
+#   npx wrangler secret put AUTH_SECRET
 
 # Optional content store, so word and question packs can be updated without a
 # redeploy. Neither is required — the bundled packs work on their own.

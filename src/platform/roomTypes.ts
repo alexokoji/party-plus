@@ -51,6 +51,8 @@ export interface RoomSnapshot<TView = unknown> {
    * like), resolved per snapshot so runtime-loaded content appears live.
    */
   optionGroups: GameOptionGroup[];
+  /** True when the host has closed the room to new players. */
+  locked: boolean;
 }
 
 export type ClientMessage =
@@ -73,7 +75,11 @@ export type ClientMessage =
    * and never used to decide anything. A game must opt in by implementing
    * authorizeStream, so no module gets an open relay by accident.
    */
-  | { type: "stream"; channel: string; data: unknown };
+  | { type: "stream"; channel: string; data: unknown }
+  /** Host only: stop admitting new players. */
+  | { type: "lock"; locked: boolean }
+  /** Host only: remove someone, and keep them out. */
+  | { type: "kick"; playerId: string };
 
 export type ServerMessage =
   | { type: "snapshot"; snapshot: RoomSnapshot }

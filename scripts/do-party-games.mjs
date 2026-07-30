@@ -9,81 +9,88 @@
  * drawing game adds a live relay channel that bypasses game state entirely.
  * Only a real socket proves what actually goes out on the wire.
  */
-import WebSocket from "ws";
-
-const PORT = process.env.ROOM_PORT ?? "8787";
-const STAMP = Date.now().toString().slice(-6);
+import { connect, createRoom, guest, joinAs, makeWaiters, send, wait } from "./roomClient.mjs";
 
 const failures = [];
 const check = (cond, msg) => {
   if (!cond) failures.push(msg);
 };
+const { waitFor } = makeWaiters(failures);
 
-function connect({ id, name }, room) {
-  const q = `playerId=${encodeURIComponent(id)}&name=${encodeURIComponent(name ?? id)}`;
-  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/room/${room}?${q}`);
-  const client = { id, ws, snapshot: null, errors: [], events: [], streams: [] };
+/**
+ * Watches every snapshot for leaks.
+ *
+ * Passed to the shared client, which runs it on each snapshot for each player,
+ * so a leak anywhere in a whole match is caught rather than only at the
+ * moments the script happens to look.
+ */
+function leakWatch(snapshot, client) {
+  const id = client.id;
+  if (snapshot.gameState !== undefined) failures.push(`LEAK: raw gameState sent to ${id}`);
 
-  ws.on("message", (raw) => {
-    const msg = JSON.parse(raw.toString());
-    if (msg.type === "error") return client.errors.push(msg.message);
-    if (msg.type === "stream") return client.streams.push(msg);
+  const view = snapshot.view;
+  if (!view) return;
+  const wire = JSON.stringify(view);
 
-    client.snapshot = msg.snapshot;
-    for (const e of msg.snapshot.events ?? []) client.events.push(e);
-    if (msg.snapshot.gameState !== undefined) failures.push(`LEAK: raw gameState sent to ${id}`);
-  });
-
-  return new Promise((resolve, reject) => {
-    ws.on("open", () => resolve(client));
-    ws.on("error", reject);
-  });
-}
-
-const send = (c, msg) => c.ws.send(JSON.stringify(msg));
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function waitFor(predicate, label, timeoutMs = 8000) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    if (predicate()) return true;
-    await wait(50);
+  // ---- Dominoes-style hidden hands.
+  if (snapshot.gameId === "dominoes" && snapshot.youArePlaying && !view.seesAllHands) {
+    for (const opp of view.opponents ?? []) {
+      const keys = Object.keys(opp).sort().join(",");
+      if (keys !== "id,tileCount") failures.push(`LEAK: dominoes opponent payload for ${id}: ${keys}`);
+    }
   }
-  failures.push(`TIMEOUT waiting for ${label}`);
-  return false;
+
+  // ---- Code Words: only a spymaster may see card owners.
+  if (snapshot.gameId === "codewords" && !view.seesKey && !view.finished) {
+    for (const card of view.cards ?? []) {
+      if (!card.revealed && card.owner !== null) {
+        failures.push(`LEAK: ${id} was given the owner of a face-down card`);
+      }
+    }
+    if (wire.includes("assassin")) failures.push(`LEAK: the assassin reached ${id}`);
+  }
+
+  // ---- Trivia: the key appears only once a question has closed.
+  if (snapshot.gameId === "trivia" && view.phase === "question") {
+    if (view.reveal !== null) failures.push(`LEAK: ${id} got the reveal mid-question`);
+    if (wire.includes("answerIndex")) failures.push(`LEAK: answerIndex reached ${id}`);
+  }
 }
 
-async function seat(room, ids, gameId, options) {
-  const clients = [];
-  for (const id of ids) clients.push(await connect({ id }, room));
+/** Seats players in a fresh, server-minted room and starts a match. */
+async function seat(names, gameId, options) {
+  const host = await guest(names[0]);
+  const code = await createRoom(host.token);
+  const clients = [await connect(host, code, { onSnapshot: leakWatch })];
+  for (const name of names.slice(1)) {
+    clients.push(await joinAs(name, code, { onSnapshot: leakWatch }));
+  }
   await wait(400);
-  const host = clients[0];
-  send(host, { type: "selectGame", gameId });
-  await waitFor(() => host.snapshot?.gameId === gameId, `${gameId} selection`);
 
-  // The pack picker is served from the module, resolved per snapshot.
-  const groups = host.snapshot?.optionGroups ?? [];
+  const [first] = clients;
+  send(first, { type: "selectGame", gameId });
+  await waitFor(() => first.snapshot?.gameId === gameId, `${gameId} selection`);
+
+  const groups = first.snapshot?.optionGroups ?? [];
   check(groups.some((g) => g.key === "pack"), `${gameId} advertised no content packs to the lobby`);
-  const packs = groups.find((g) => g.key === "pack")?.options ?? [];
-  check(packs.length >= 2, `${gameId} offered fewer than two packs`);
+  check((groups.find((g) => g.key === "pack")?.options ?? []).length >= 2, `${gameId} offered fewer than two packs`);
 
   if (options) {
-    send(host, { type: "setGameOptions", options });
+    send(first, { type: "setGameOptions", options });
     await waitFor(
-      () => Object.entries(options).every(([k, v]) => host.snapshot?.gameOptions?.[k] === v),
+      () => Object.entries(options).every(([k, v]) => first.snapshot?.gameOptions?.[k] === v),
       `${gameId} options`
     );
   }
   for (const c of clients) send(c, { type: "ready", ready: true });
-  await waitFor(() => host.snapshot?.members.filter((m) => m.seated).every((m) => m.ready), `${gameId} ready`);
-  send(host, { type: "start" });
-  await waitFor(() => host.snapshot?.phase === "playing", `${gameId} start`);
-  return clients;
+  await waitFor(() => first.snapshot?.members.filter((m) => m.seated).every((m) => m.ready), `${gameId} ready`);
+  send(first, { type: "start" });
+  await waitFor(() => first.snapshot?.phase === "playing", `${gameId} start`);
+  return { clients, code };
 }
 
 // ================= Code Words =================
-const CROOM = `CW${STAMP}`;
-const cw = await seat(CROOM, ["cw1", "cw2", "cw3", "cw4"], "codewords", { pack: "words-naija" });
+const { clients: cw, code: CROOM } = await seat(["cw1", "cw2", "cw3", "cw4"], "codewords", { pack: "words-naija" });
 const [c1] = cw;
 console.log(`code words: 4 players seated in ${CROOM}`);
 
@@ -159,8 +166,7 @@ for (const c of cw) c.ws.close();
 await wait(200);
 
 // ================= Trivia =================
-const TROOM = `TV${STAMP}`;
-const tv = await seat(TROOM, ["tv1", "tv2", "tv3"], "trivia", { pack: "trivia-naija", variant: "blitz" });
+const { clients: tv, code: TROOM } = await seat(["tv1", "tv2", "tv3"], "trivia", { pack: "trivia-naija", variant: "blitz" });
 const [t1, t2, t3] = tv;
 console.log(`trivia: 3 players seated in ${TROOM}`);
 
@@ -203,8 +209,7 @@ for (const c of tv) c.ws.close();
 await wait(200);
 
 // ================= Sketch & Guess =================
-const SROOM = `SK${STAMP}`;
-const sk = await seat(SROOM, ["sk1", "sk2", "sk3"], "sketch", { pack: "draw-naija", variant: "quick" });
+const { clients: sk, code: SROOM } = await seat(["sk1", "sk2", "sk3"], "sketch", { pack: "draw-naija", variant: "quick" });
 const [s1] = sk;
 console.log(`sketch: 3 players seated in ${SROOM}`);
 

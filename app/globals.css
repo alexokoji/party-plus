@@ -1805,3 +1805,28 @@ main {
   .sketch-lower { grid-template-columns: 1fr; }
   .trivia-question h2 { font-size: 1.1rem; }
 }
+
+/* ---------- Accounts ---------- */
+
+.account-panel { display: flex; flex-direction: column; gap: 0.6rem; }
+.account-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; justify-content: space-between; }
+.account-who { font-size: 0.92rem; }
+.account-actions { display: flex; gap: 0.5rem; }
+.account-form { display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: flex-end; }
+.account-form label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; }
+.account-form input { padding: 0.5rem 0.6rem; border-radius: 0.45rem; min-width: 12rem; }
+.account-form .hint { flex-basis: 100%; margin: 0; }
+
+.kick-button {
+  margin-left: 0.4rem; padding: 0 0.35rem;
+  font-size: 0.75rem; line-height: 1.4; color: #ff9d9d;
+  background: rgba(217, 46, 46, 0.16);
+  border: 1px solid rgba(217, 46, 46, 0.4); border-radius: 0.3rem;
+  cursor: pointer;
+}
+.kick-button:hover { background: rgba(217, 46, 46, 0.3); }
+
+@media (max-width: 720px) {
+  .account-form input { min-width: 0; width: 100%; }
+  .account-form label { flex: 1 1 100%; }
+}

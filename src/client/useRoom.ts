@@ -2,39 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClientMessage, RoomSnapshot, ServerMessage } from "../platform/roomTypes";
-import { getDeviceId } from "./deviceId";
+import { ensureIdentity, roomTicket } from "./identity";
+import { roomWsBase, safeServerUrl } from "./roomUrl";
 
 export type ConnectionStatus = "connecting" | "connected" | "reconnecting" | "closed";
 
 const RECONNECT_BASE_MS = 500;
 const RECONNECT_MAX_MS = 8000;
-
-/**
- * Where the room Worker lives.
- *
- * Falls back to the local `wrangler dev` address only when the page itself is
- * on localhost. A deployed build with no NEXT_PUBLIC_ROOM_WS_URL used to
- * silently dial 127.0.0.1 and hang on "connecting" forever; failing loudly
- * turns that into an obvious misconfiguration.
- */
-export function roomWsBase(): string {
-  const configured = process.env.NEXT_PUBLIC_ROOM_WS_URL;
-  if (configured) return configured.replace(/\/$/, "");
-  const host = typeof window !== "undefined" ? window.location.hostname : "";
-  if (host === "localhost" || host === "127.0.0.1" || host === "") return "ws://127.0.0.1:8787";
-  throw new Error(
-    "NEXT_PUBLIC_ROOM_WS_URL is not set. Point it at the deployed room Worker, e.g. wss://party-plus-room.<subdomain>.workers.dev"
-  );
-}
-
-/** roomWsBase() throws when misconfigured; the UI still needs something to show. */
-function safeServerUrl(): string {
-  try {
-    return roomWsBase();
-  } catch {
-    return "NEXT_PUBLIC_ROOM_WS_URL (not set)";
-  }
-}
 
 export interface Room<TView = unknown> {
   status: ConnectionStatus;
@@ -61,6 +35,10 @@ export interface Room<TView = unknown> {
   start: () => void;
   rematch: () => void;
   sendMove: (move: unknown) => void;
+  /** Host only: close the room to new players. */
+  lock: (locked: boolean) => void;
+  /** Host only: remove someone and keep them out. */
+  kick: (playerId: string) => void;
   sendChat: (text: string) => void;
   sendEmote: (emote: string) => void;
   /** Pushes an ephemeral frame (drawing strokes) to the rest of the room. */
@@ -97,20 +75,41 @@ export function useRoom<TView = unknown>(code: string, displayName = ""): Room<T
   const nameRef = useRef(displayName);
   const streamHandlers = useRef(new Set<(frame: StreamFrame) => void>());
 
-  useEffect(() => setPlayerId(getDeviceId()), []);
+  const tokenRef = useRef("");
+
+  // Identity first: the socket cannot be opened without a signed ticket, and a
+  // ticket needs a verified identity to be issued against.
+  useEffect(() => {
+    let cancelled = false;
+    ensureIdentity()
+      .then(({ account, token }) => {
+        if (cancelled) return;
+        tokenRef.current = token;
+        if (!nameRef.current) nameRef.current = account.name;
+        setPlayerId(account.id);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "could not sign in");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!playerId) return;
     closedByUs.current = false;
 
-    const connect = () => {
-      const query = `playerId=${encodeURIComponent(playerId)}${
-        nameRef.current ? `&name=${encodeURIComponent(nameRef.current)}` : ""
-      }`;
-
+    const connect = async () => {
       let ws: WebSocket;
       try {
-        ws = new WebSocket(`${roomWsBase()}/room/${encodeURIComponent(code)}?${query}`);
+        // One short-lived, room-scoped ticket per connection. It is what the
+        // server verifies instead of believing a player id in the query.
+        const ticket = await roomTicket(code, tokenRef.current, nameRef.current);
+        if (closedByUs.current) return;
+        ws = new WebSocket(
+          `${roomWsBase()}/room/${encodeURIComponent(code)}?ticket=${encodeURIComponent(ticket)}`
+        );
       } catch (err) {
         // Misconfigured server URL, or the browser refused the socket. Surface
         // it as an unreachable server rather than throwing out of the effect
@@ -119,7 +118,7 @@ export function useRoom<TView = unknown>(code: string, displayName = ""): Room<T
         setFailedAttempts(attemptsRef.current + 1);
         setError(err instanceof Error ? err.message : "could not open a connection");
         const retry = Math.min(RECONNECT_MAX_MS, RECONNECT_BASE_MS * 2 ** attemptsRef.current++);
-        reconnectRef.current = setTimeout(connect, retry);
+        reconnectRef.current = setTimeout(() => void connect(), retry);
         return;
       }
       socketRef.current = ws;
@@ -158,13 +157,13 @@ export function useRoom<TView = unknown>(code: string, displayName = ""): Room<T
         setStatus("reconnecting");
         setFailedAttempts(attemptsRef.current + 1);
         const delay = Math.min(RECONNECT_MAX_MS, RECONNECT_BASE_MS * 2 ** attemptsRef.current++);
-        reconnectRef.current = setTimeout(connect, delay);
+        reconnectRef.current = setTimeout(() => void connect(), delay);
       };
 
       ws.onerror = () => ws.close();
     };
 
-    connect();
+    void connect();
     return () => {
       closedByUs.current = true;
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
@@ -229,6 +228,8 @@ export function useRoom<TView = unknown>(code: string, displayName = ""): Room<T
     start: () => send({ type: "start" }),
     rematch: () => send({ type: "rematch" }),
     sendMove: (move) => send({ type: "move", move }),
+    lock: (locked) => send({ type: "lock", locked }),
+    kick: (id) => send({ type: "kick", playerId: id }),
     sendChat: (text) => send({ type: "chat", text }),
     sendEmote: (emote) => send({ type: "emote", emote }),
     // Deliberately bypasses `send`: a dropped stroke frame is not worth an

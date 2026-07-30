@@ -9,72 +9,42 @@
  * connection proves the bytes on the wire are safe and that the game-agnostic
  * room engine drives a real module correctly.
  */
-import WebSocket from "ws";
+import { connect, createRoom, guest, joinAs, makeWaiters, send, wait } from "./roomClient.mjs";
 
-const PORT = process.env.ROOM_PORT ?? "8787";
-const ROOM = `IT${Date.now().toString().slice(-6)}`;
-const PLAYERS = [
-  { id: "alice", name: "Alice" },
-  { id: "bob", name: "Bob" },
-  { id: "carol", name: "Carol" },
-];
+const PLAYERS = ["Alice", "Bob", "Carol"];
 
 const failures = [];
 const check = (cond, msg) => {
   if (!cond) failures.push(msg);
 };
 
-function connect({ id, name }, room = ROOM) {
-  const q = `playerId=${encodeURIComponent(id)}&name=${encodeURIComponent(name ?? "")}`;
-  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/room/${room}?${q}`);
-  const client = { id, name, ws, snapshot: null, errors: [], messages: 0 };
-
-  ws.on("message", (raw) => {
-    const msg = JSON.parse(raw.toString());
-    client.messages++;
-    if (msg.type === "error") return client.errors.push(msg.message);
-    client.snapshot = msg.snapshot;
-
-    // THE invariant: a seated player may only ever see their own hidden state.
-    const view = msg.snapshot.view;
-    if (view && msg.snapshot.youArePlaying && !view.seesAllHands) {
-      // Liar's Dice
-      for (const die of view.dice ?? []) {
-        if (die.ownerId !== id && die.face !== null) {
-          failures.push(`LEAK: ${id} saw ${die.ownerId}'s die (${die.face})`);
-        }
-      }
-      // Whot: opponents must be counts only, and allHands must stay empty.
-      for (const opp of view.opponents ?? []) {
-        const keys = Object.keys(opp).sort().join(",");
-        if (keys !== "cardCount,id") failures.push(`LEAK: opponent payload for ${id} had keys ${keys}`);
-      }
-      if (view.allHands && Object.keys(view.allHands).length > 0) {
-        failures.push(`LEAK: ${id} received allHands while still playing`);
+/**
+ * The invariant, checked on every snapshot: a seated player may only ever see
+ * their own hidden state.
+ */
+function leakWatch(snapshot, client) {
+  const id = client.id;
+  const view = snapshot.view;
+  if (view && snapshot.youArePlaying && !view.seesAllHands) {
+    // Liar's Dice
+    for (const die of view.dice ?? []) {
+      if (die.ownerId !== id && die.face !== null) {
+        failures.push(`LEAK: ${id} saw ${die.ownerId}'s die (${die.face})`);
       }
     }
-    // Raw authoritative state must never appear in a snapshot.
-    if (msg.snapshot.gameState !== undefined) failures.push(`LEAK: raw gameState sent to ${id}`);
-  });
-
-  return new Promise((resolve, reject) => {
-    ws.on("open", () => resolve(client));
-    ws.on("error", reject);
-  });
-}
-
-const send = (c, msg) => c.ws.send(JSON.stringify(msg));
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function waitFor(predicate, label, timeoutMs = 6000) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    if (predicate()) return true;
-    await wait(50);
+    // Whot: opponents must be counts only, and allHands must stay empty.
+    for (const opp of view.opponents ?? []) {
+      const keys = Object.keys(opp).sort().join(",");
+      if (keys !== "cardCount,id") failures.push(`LEAK: opponent payload for ${id} had keys ${keys}`);
+    }
+    if (view.allHands && Object.keys(view.allHands).length > 0) {
+      failures.push(`LEAK: ${id} received allHands while still playing`);
+    }
   }
-  failures.push(`TIMEOUT waiting for ${label}`);
-  return false;
+  if (snapshot.gameState !== undefined) failures.push(`LEAK: raw gameState sent to ${id}`);
 }
+
+const { waitFor } = makeWaiters(failures);
 
 /** Minimum legal raise, or a challenge — using only the redacted view. */
 function decide(view) {
@@ -88,15 +58,19 @@ function decide(view) {
 }
 
 // ---------- lobby ----------
-const clients = [];
-for (const p of PLAYERS) clients.push(await connect(p));
+const aliceIdentity = await guest(PLAYERS[0]);
+const ROOM = await createRoom(aliceIdentity.token);
+const clients = [await connect(aliceIdentity, ROOM, { onSnapshot: leakWatch })];
+for (const name of PLAYERS.slice(1)) {
+  clients.push(await joinAs(name, ROOM, { onSnapshot: leakWatch }));
+}
 await wait(400);
 const [host, second, third] = clients;
 
 console.log(`connected ${clients.length} clients to room ${ROOM}`);
 
 check(host.snapshot?.phase === "lobby", "room did not start in the lobby");
-check(host.snapshot?.hostId === "alice", "first joiner should be host");
+check(host.snapshot?.hostId === host.id, "first joiner should be host");
 check((host.snapshot?.catalog ?? []).some((g) => g.id === "liars-dice"), "catalog missing liars-dice");
 check(host.snapshot?.members.length === 3, `expected 3 members, got ${host.snapshot?.members.length}`);
 check(host.snapshot?.members.every((m) => m.seated), "lobby joiners should be seated by default");
@@ -104,7 +78,7 @@ check(host.snapshot?.view === null, "no game view should exist before a match st
 
 // Names propagate.
 check(
-  host.snapshot?.members.find((m) => m.id === "bob")?.name === "Bob",
+  host.snapshot?.members.find((m) => m.id === second.id)?.name === "Bob",
   "display name not broadcast"
 );
 
@@ -139,7 +113,7 @@ await waitFor(
 
 // Third player switches to spectating; the match then has 2 seats.
 send(third, { type: "spectate", spectate: true });
-await waitFor(() => host.snapshot?.members.find((m) => m.id === "carol")?.seated === false, "spectate toggle");
+await waitFor(() => host.snapshot?.members.find((m) => m.id === third.id)?.seated === false, "spectate toggle");
 
 for (const c of [host, second]) send(c, { type: "ready", ready: true });
 await waitFor(
@@ -234,9 +208,10 @@ for (const c of clients) c.ws.close();
 await wait(300);
 
 // ---------- timeout / disconnect ----------
-const TROOM = `${ROOM}T`;
-const t1 = await connect({ id: "tim", name: "Tim" }, TROOM);
-const t2 = await connect({ id: "tina", name: "Tina" }, TROOM);
+const timIdentity = await guest("Tim");
+const TROOM = await createRoom(timIdentity.token);
+const t1 = await connect(timIdentity, TROOM, { onSnapshot: leakWatch });
+const t2 = await joinAs("Tina", TROOM, { onSnapshot: leakWatch });
 await wait(300);
 send(t1, { type: "selectGame", gameId: "liars-dice" });
 await waitFor(() => t1.snapshot?.gameId === "liars-dice", "timeout-room game selection");
@@ -270,14 +245,15 @@ watcher.ws.close();
 // ---------- host migration ----------
 // If the host vanishes the room must not deadlock: nobody else could pick a
 // game or start, and the host is not coming back.
-const HROOM = `${ROOM}H`;
-const h1 = await connect({ id: "hosty", name: "Hosty" }, HROOM);
-const h2 = await connect({ id: "nexty", name: "Nexty" }, HROOM);
+const hostyIdentity = await guest("Hosty");
+const HROOM = await createRoom(hostyIdentity.token);
+const h1 = await connect(hostyIdentity, HROOM, { onSnapshot: leakWatch });
+const h2 = await joinAs("Nexty", HROOM, { onSnapshot: leakWatch });
 await wait(300);
-check(h2.snapshot?.hostId === "hosty", "first joiner should start as host");
+check(h2.snapshot?.hostId === h1.id, "first joiner should start as host");
 
 h1.ws.close();
-await waitFor(() => h2.snapshot?.hostId === "nexty", "host to migrate to the remaining member", 8000);
+await waitFor(() => h2.snapshot?.hostId === h2.id, "host to migrate to the remaining member", 8000);
 
 h2.errors.length = 0;
 send(h2, { type: "selectGame", gameId: "liars-dice" });
@@ -287,9 +263,10 @@ h2.ws.close();
 await wait(200);
 
 // ---------- Whot module through the same generic room ----------
-const WROOM = `${ROOM}W`;
-const w1 = await connect({ id: "wanda", name: "Wanda" }, WROOM);
-const w2 = await connect({ id: "wale", name: "Wale" }, WROOM);
+const wandaIdentity = await guest("Wanda");
+const WROOM = await createRoom(wandaIdentity.token);
+const w1 = await connect(wandaIdentity, WROOM, { onSnapshot: leakWatch });
+const w2 = await joinAs("Wale", WROOM, { onSnapshot: leakWatch });
 await wait(300);
 
 check((w1.snapshot?.catalog ?? []).some((g) => g.id === "whot"), "catalog missing whot");

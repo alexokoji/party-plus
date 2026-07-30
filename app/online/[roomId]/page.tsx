@@ -4,7 +4,7 @@ import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useRoom } from "../../../src/client/useRoom";
-import { getDisplayName, setDisplayName } from "../../../src/client/deviceId";
+import { getDisplayName, setDisplayName } from "../../../src/client/identity";
 import { RoomChat } from "../../../src/ui/RoomChat";
 import { RoomLobby } from "../../../src/ui/RoomLobby";
 import { RulesDialog } from "../../../src/ui/RulesDialog";
@@ -308,6 +308,8 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                 onReady={room.setReady}
                 onSpectate={room.setSpectate}
                 onStart={room.start}
+                onLock={room.lock}
+                onKick={room.kick}
               />
             ) : (
               <>

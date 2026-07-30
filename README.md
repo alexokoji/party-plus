@@ -105,8 +105,21 @@ npm run test:party-games
 See [DEPLOY.md](DEPLOY.md). The room Worker goes to Cloudflare; the web app to
 Vercel.
 
+## Identity, rooms and abuse
+
+Hidden information is only as good as knowing who you are talking to. The
+server issues every player a signed identity token — guests included, with no
+signup wall — and a socket is opened with a short-lived, room-scoped ticket
+rather than a player id the client asserts. Accounts are optional on top:
+claim a username and your existing identity comes with you, so you keep the
+seat you are already sitting in.
+
+Room codes are minted server-side from a CSPRNG, and a room must be created
+before it can be joined, so a wrong guess is a 404 rather than a new empty
+room. Rate limits sit on both the per-IP endpoints and each open socket.
+
 ## Not built
 
-No accounts, no persistence between rooms, no matchmaking, no rate limiting.
-Player identity is a random id in `localStorage`. Room codes are guessable —
-anyone with a code can join.
+No email, so no password reset. No matchmaking, no ELO, no history recorded
+against accounts. Moderation is per-room: the host can lock the room and
+remove people.

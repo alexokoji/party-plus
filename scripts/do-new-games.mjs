@@ -11,10 +11,7 @@
  * from everyone including the dead. Unit tests cover the redaction functions;
  * only a live socket proves the bytes on the wire are safe.
  */
-import WebSocket from "ws";
-
-const PORT = process.env.ROOM_PORT ?? "8787";
-const STAMP = Date.now().toString().slice(-6);
+import { connect, createRoom, guest, joinAs, makeWaiters, send, wait } from "./roomClient.mjs";
 
 const failures = [];
 const check = (cond, msg) => {
@@ -23,94 +20,62 @@ const check = (cond, msg) => {
 
 const ROLE_NAMES = ["villager", "werewolf", "seer", "doctor", "hunter", "witch"];
 
-function connect({ id, name }, room) {
-  const q = `playerId=${encodeURIComponent(id)}&name=${encodeURIComponent(name ?? "")}`;
-  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/room/${room}?${q}`);
-  const client = { id, name, ws, snapshot: null, errors: [], events: [] };
+/** Runs on every snapshot for every player: a leak anywhere fails the run. */
+function leakWatch(snapshot, client) {
+  const id = client.id;
+  if (snapshot.gameState !== undefined) failures.push(`LEAK: raw gameState sent to ${id}`);
 
-  ws.on("message", (raw) => {
-    const msg = JSON.parse(raw.toString());
-    if (msg.type === "error") return client.errors.push(msg.message);
-    client.snapshot = msg.snapshot;
-    for (const e of msg.snapshot.events ?? []) client.events.push(e);
+  const view = snapshot.view;
+  if (!view) return;
+  const wire = JSON.stringify(view);
 
-    if (msg.snapshot.gameState !== undefined) failures.push(`LEAK: raw gameState sent to ${id}`);
+  // ---- Dominoes: tiles in hand are hidden information.
+  if (snapshot.gameId === "dominoes" && snapshot.youArePlaying && !view.seesAllHands) {
+    for (const opp of view.opponents ?? []) {
+      const keys = Object.keys(opp).sort().join(",");
+      if (keys !== "id,tileCount") failures.push(`LEAK: dominoes opponent payload for ${id}: ${keys}`);
+    }
+    if (Object.keys(view.allHands ?? {}).length > 0) {
+      failures.push(`LEAK: ${id} received allHands while still playing dominoes`);
+    }
+  }
 
-    const view = msg.snapshot.view;
-    if (!view) return;
-    const wire = JSON.stringify(view);
-
-    // ---- Dominoes: tiles in hand are hidden information.
-    if (msg.snapshot.gameId === "dominoes" && msg.snapshot.youArePlaying && !view.seesAllHands) {
-      for (const opp of view.opponents ?? []) {
-        const keys = Object.keys(opp).sort().join(",");
-        if (keys !== "id,tileCount") failures.push(`LEAK: dominoes opponent payload for ${id}: ${keys}`);
-      }
-      if (Object.keys(view.allHands ?? {}).length > 0) {
-        failures.push(`LEAK: ${id} received allHands while still playing dominoes`);
+  // ---- Werewolf: roles stay hidden from EVERYONE, including the dead.
+  if (snapshot.gameId === "werewolf") {
+    for (const p of view.players ?? []) {
+      const keys = Object.keys(p).sort().join(",");
+      if (keys !== "accusedBy,alive,hasVoted,id") {
+        failures.push(`LEAK: werewolf public player payload for ${id}: ${keys}`);
       }
     }
-
-    // ---- Werewolf: roles are hidden from EVERYONE until the game ends,
-    // including the dead and spectators.
-    if (msg.snapshot.gameId === "werewolf") {
-      for (const p of view.players ?? []) {
-        const keys = Object.keys(p).sort().join(",");
-        if (keys !== "accusedBy,alive,hasVoted,id") {
-          failures.push(`LEAK: werewolf public player payload for ${id}: ${keys}`);
+    if (!view.finished) {
+      if (view.revealedRoles !== null) failures.push(`LEAK: ${id} got revealedRoles mid-game`);
+      const mine = view.me?.role ?? null;
+      for (const role of ROLE_NAMES) {
+        if (role === mine) continue;
+        if (wire.includes(`"role":"${role}"`)) {
+          failures.push(`LEAK: ${id} (role ${mine}) saw role "${role}" on the wire`);
         }
       }
-      if (!view.finished) {
-        if (view.revealedRoles !== null) failures.push(`LEAK: ${id} got revealedRoles mid-game`);
-        // The only role name allowed on the wire is this recipient's own.
-        const mine = view.me?.role ?? null;
-        for (const role of ROLE_NAMES) {
-          if (role === mine) continue;
-          if (wire.includes(`"role":"${role}"`)) {
-            failures.push(`LEAK: ${id} (role ${mine}) saw role "${role}" on the wire`);
-          }
-        }
-        // Nobody's night choice or vote but their own.
-        if (wire.includes('"nightChoice"') && !view.me) {
-          failures.push(`LEAK: spectator ${id} received a nightChoice`);
-        }
+      if (wire.includes('"nightChoice"') && !view.me) {
+        failures.push(`LEAK: spectator ${id} received a nightChoice`);
       }
     }
-  });
-
-  return new Promise((resolve, reject) => {
-    ws.on("open", () => resolve(client));
-    ws.on("error", reject);
-  });
-}
-
-const send = (c, msg) => c.ws.send(JSON.stringify(msg));
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
-/** Like waitFor, but a miss is not a failure — for retryable, clock-driven steps. */
-async function poll(predicate, timeoutMs = 6000) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    if (predicate()) return true;
-    await wait(50);
   }
-  return false;
 }
 
-async function waitFor(predicate, label, timeoutMs = 6000) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    if (predicate()) return true;
-    await wait(50);
+const { waitFor, poll } = makeWaiters(failures);
+
+/** Seats players in a fresh, server-minted room and starts a match. */
+async function seat(names, gameId, options) {
+  const first = await guest(names[0]);
+  const code = await createRoom(first.token);
+  const clients = [await connect(first, code, { onSnapshot: leakWatch })];
+  for (const name of names.slice(1)) {
+    clients.push(await joinAs(name, code, { onSnapshot: leakWatch }));
   }
-  failures.push(`TIMEOUT waiting for ${label}`);
-  return false;
-}
-
-async function seat(room, players, gameId, options) {
-  const clients = [];
-  for (const p of players) clients.push(await connect(p, room));
   await wait(400);
+
   const host = clients[0];
   send(host, { type: "selectGame", gameId });
   await waitFor(() => host.snapshot?.gameId === gameId, `${gameId} selection`);
@@ -125,21 +90,11 @@ async function seat(room, players, gameId, options) {
   await waitFor(() => host.snapshot?.members.filter((m) => m.seated).every((m) => m.ready), `${gameId} ready`);
   send(host, { type: "start" });
   await waitFor(() => host.snapshot?.phase === "playing", `${gameId} start`);
-  return clients;
+  return { clients, code };
 }
 
 // ================= Dominoes =================
-const DROOM = `DM${STAMP}`;
-const dom = await seat(
-  DROOM,
-  [
-    { id: "dora", name: "Dora" },
-    { id: "dele", name: "Dele" },
-    { id: "duke", name: "Duke" },
-  ],
-  "dominoes",
-  { variant: "draw" }
-);
+const { clients: dom, code: DROOM } = await seat(["Dora", "Dele", "Duke"], "dominoes", { variant: "draw" });
 const [d1] = dom;
 console.log(`dominoes: 3 players seated in ${DROOM}`);
 
@@ -214,15 +169,12 @@ for (const c of dom) c.ws.close();
 await wait(200);
 
 // ================= Werewolf =================
-const WROOM = `WW${STAMP}`;
 const names = ["wanda", "wole", "wumi", "wera", "wisi"];
-const wolf = await seat(
-  WROOM,
-  names.map((id) => ({ id, name: id })),
-  "werewolf",
-  { variant: "quick" }
-);
+const { clients: wolf, code: WROOM } = await seat(names, "werewolf", { variant: "quick" });
 const [g1] = wolf;
+// Player ids are server-issued now, so the "no event names a player" check has
+// to look for the real ids rather than the names the script chose.
+const wolfIds = wolf.map((c) => c.id);
 console.log(`werewolf: 5 players seated in ${WROOM}`);
 
 check(g1.snapshot?.view?.rulesId === "quick", `werewolf variant not applied: ${g1.snapshot?.view?.rulesId}`);
@@ -277,7 +229,7 @@ const nightEvents = g1.events.filter((e) => e.type === "nightActed");
 check(nightEvents.length > 0, "no night event reached the table at all");
 for (const e of nightEvents) {
   const text = JSON.stringify(e);
-  for (const id of names) {
+  for (const id of wolfIds) {
     if (text.includes(id)) failures.push(`LEAK: night event named ${id}: ${text}`);
   }
 }
