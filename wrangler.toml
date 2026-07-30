@@ -46,7 +46,7 @@ new_sqlite_classes = ["AuthDO", "RateLimiterDO"]
 # Comma-separated origins allowed to open a room socket. Empty means "allow
 # any", which is right for local dev and a private test. Set it to the web
 # app's origin once that is deployed, then redeploy the Worker.
-ALLOWED_ORIGINS = ""
+ALLOWED_ORIGINS = "https://party-plus-mu.vercel.app,https://party-plus-stridr-soft.vercel.app,https://party-plus-stridrsoft-7514-stridr-soft.vercel.app"
 
 # AUTH_SECRET signs identity tokens. Optional: leave it unset and the auth
 # object generates one on first use and keeps it, so a fresh deploy works with
@@ -56,7 +56,7 @@ ALLOWED_ORIGINS = ""
 
 # Where the web app lives. Used to build the links inside verification and
 # password-reset emails, so it must be the address people can actually reach.
-APP_URL = "http://localhost:3000"
+APP_URL = "https://party-plus-mu.vercel.app"
 
 # Sending email needs a provider key and a from address. Leave them unset and
 # links are printed to the Worker log instead of sent — which is what makes the
