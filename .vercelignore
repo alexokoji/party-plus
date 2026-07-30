@@ -1,0 +1,18 @@
+# Vercel reads THIS file, not .gitignore — without it the CLI uploads every
+# build artefact in the working tree (150MB+ of .next caches, wrangler state
+# and dry-run output) on every deploy.
+node_modules
+.git
+
+# Build output and caches. Vercel builds from source on its own machines.
+.next
+.next-size
+dist
+dist-check
+dist-deploy
+.wrangler
+*.tsbuildinfo
+
+# Local-only config.
+.env*.local
+.claude
