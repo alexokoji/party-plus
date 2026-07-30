@@ -42,25 +42,33 @@ Expect `{"ok":true,"service":"party-plus-room"}`.
 
 ## 2. Web app → Vercel
 
-Set the room server URL first — note the **`wss://`** scheme, not `https://`:
+The repo is at <https://github.com/alexokoji/party-plus>, so import it rather
+than uploading from your machine — you get auto-deploy on push and a preview
+URL per branch.
+
+1. Go to <https://vercel.com/new> and sign in **with GitHub**.
+2. Import `alexokoji/party-plus`. Vercel detects Next.js on its own — leave
+   the framework, build command and output directory alone. No `vercel.json`
+   is needed.
+3. Before clicking Deploy, open **Environment Variables** and add:
+
+   | Name | Value |
+   | --- | --- |
+   | `NEXT_PUBLIC_ROOM_WS_URL` | `wss://party-plus-room.<your-subdomain>.workers.dev` |
+
+   Note the **`wss://`** scheme — not `https://`, not `ws://`. No trailing
+   slash, no `/room` path. Tick Production **and** Preview.
+4. Deploy.
+
+Or from the CLI, if you prefer:
 
 ```bash
 npx vercel env add NEXT_PUBLIC_ROOM_WS_URL production
 ```
 
-Paste `wss://party-plus-room.<your-subdomain>.workers.dev` when prompted, with
-no trailing slash and no `/room` path. Repeat for the `preview` environment if
-you want preview deploys to work.
-
-Then deploy:
-
 ```bash
 npx vercel --prod
 ```
-
-The first run asks a few setup questions (scope, link to an existing project,
-directory — accept the defaults). Vercel detects Next.js on its own; no
-`vercel.json` is needed.
 
 > `NEXT_PUBLIC_*` variables are baked in **at build time**. Changing it later
 > means redeploying the web app, not just editing the variable.
