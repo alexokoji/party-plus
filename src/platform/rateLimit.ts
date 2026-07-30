@@ -83,6 +83,16 @@ export const IP_LIMITS = {
   login: perWindow(10, 600),
   createRoom: perWindow(20, 3600),
   ticket: perWindow(40, 600),
+  /**
+   * Anything that causes an email to be sent.
+   *
+   * Tight, because the cost of getting this wrong is landing in someone's
+   * inbox repeatedly — which is both abuse of them and the fastest way to
+   * have a sending domain marked as spam.
+   */
+  email: perWindow(5, 3600),
+  /** Consuming a link: generous, since honest people click twice. */
+  consumeLink: perWindow(20, 600),
 } as const satisfies Record<string, Limit>;
 
 export type IpLimitName = keyof typeof IP_LIMITS;

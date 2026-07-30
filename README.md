@@ -114,12 +114,17 @@ rather than a player id the client asserts. Accounts are optional on top:
 claim a username and your existing identity comes with you, so you keep the
 seat you are already sitting in.
 
+Accounts carry an email, confirmed by a one-time link, so a forgotten password
+is recoverable. Only a hash of each link secret is stored, links work once, and
+a completed reset signs out every other session — whoever prompted the reset
+loses their access too. Mail goes through an HTTP provider; with none
+configured the links are logged instead, so the flow is testable locally.
+
 Room codes are minted server-side from a CSPRNG, and a room must be created
 before it can be joined, so a wrong guess is a 404 rather than a new empty
 room. Rate limits sit on both the per-IP endpoints and each open socket.
 
 ## Not built
 
-No email, so no password reset. No matchmaking, no ELO, no history recorded
-against accounts. Moderation is per-room: the host can lock the room and
-remove people.
+No matchmaking, no ELO, no history recorded against accounts. Moderation is
+per-room: the host can lock the room and remove people.

@@ -116,13 +116,32 @@ export default {
         guest: "guest",
         register: "register",
         login: "login",
+        // Anything that puts mail in someone's inbox.
+        forgot: "email",
+        "set-email": "email",
+        "resend-verification": "email",
+        // Following a link is not abuse, but it should not be unbounded either.
+        reset: "consumeLink",
+        verify: "consumeLink",
       };
       const limitName = limits[action];
       if (limitName) {
         const refusal = await limited(request, env, limitName);
         if (refusal) return new Response(refusal.body, { status: 429, headers: { ...headers, "content-type": "application/json" } });
       }
-      if (!["guest", "register", "login", "me", "rename"].includes(action)) {
+      const known = [
+        "guest",
+        "register",
+        "login",
+        "me",
+        "rename",
+        "forgot",
+        "reset",
+        "verify",
+        "set-email",
+        "resend-verification",
+      ];
+      if (!known.includes(action)) {
         return json({ error: "not found" }, { status: 404 }, headers);
       }
 

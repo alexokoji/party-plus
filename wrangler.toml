@@ -54,6 +54,16 @@ ALLOWED_ORIGINS = ""
 # survive that object being wiped:
 #   npx wrangler secret put AUTH_SECRET
 
+# Where the web app lives. Used to build the links inside verification and
+# password-reset emails, so it must be the address people can actually reach.
+APP_URL = "http://localhost:3000"
+
+# Sending email needs a provider key and a from address. Leave them unset and
+# links are printed to the Worker log instead of sent — which is what makes the
+# reset flow testable locally without signing up for anything.
+#   npx wrangler secret put RESEND_API_KEY
+# EMAIL_FROM = "Party Plus <no-reply@yourdomain.com>"
+
 # Optional content store, so word and question packs can be updated without a
 # redeploy. Neither is required — the bundled packs work on their own.
 #   CONTENT_URL = "https://example.com/party-plus-packs.json"

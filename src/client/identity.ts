@@ -23,6 +23,20 @@ export interface Account {
   kind: AccountKind;
   /** Set only for real accounts. */
   username?: string;
+  email?: string | null;
+  emailVerified?: boolean;
+}
+
+/**
+ * What happened to an email we asked the server to send.
+ *
+ * `devLink` only appears when no mail provider is configured — the server
+ * hands back the link so the flow can be walked locally without a mailbox.
+ */
+export interface Delivery {
+  sent: boolean;
+  via: string;
+  devLink?: string;
 }
 
 export interface AuthResult {
@@ -116,19 +130,60 @@ export async function ensureIdentity(): Promise<AuthResult> {
 export async function register(
   username: string,
   password: string,
+  email: string,
   name?: string
-): Promise<AuthResult> {
+): Promise<AuthResult & { verification?: Delivery }> {
   // Passes the current guest token so the account inherits that player id and
   // the seat they may already be sitting in.
-  const { token, user } = await post<{ token: string; user: Account }>("/auth/register", {
+  const { token, user, verification } = await post<{
+    token: string;
+    user: Account;
+    verification?: Delivery;
+  }>("/auth/register", {
     username,
     password,
+    email,
     name: name || getDisplayName(),
     token: readToken() || undefined,
   });
   writeToken(token);
   if (user.name) setDisplayName(user.name);
-  return { account: user, token };
+  return { account: user, token, verification };
+}
+
+/**
+ * Asks for a reset link.
+ *
+ * Always resolves, whatever the address — the server deliberately gives the
+ * same answer for an unknown one, so this endpoint cannot be used to find out
+ * who has an account.
+ */
+export async function forgotPassword(email: string): Promise<{ message: string; devLink?: string }> {
+  return post<{ message: string; devLink?: string }>("/auth/forgot", { email });
+}
+
+/** Finishes a reset. The returned token replaces every earlier session. */
+export async function resetPassword(token: string, password: string): Promise<AuthResult> {
+  const result = await post<{ token: string; user: Account }>("/auth/reset", { token, password });
+  writeToken(result.token);
+  if (result.user.name) setDisplayName(result.user.name);
+  return { account: result.user, token: result.token };
+}
+
+/** Confirms an address from a link. Does not require being signed in. */
+export async function verifyEmail(token: string): Promise<Account> {
+  const { user } = await post<{ user: Account }>("/auth/verify", { token });
+  return user;
+}
+
+/** Adds or changes the address on an account; the new one needs confirming. */
+export async function setEmail(email: string, token: string): Promise<{ account: Account; verification?: Delivery }> {
+  const result = await post<{ user: Account; verification?: Delivery }>("/auth/set-email", { email }, token);
+  return { account: result.user, verification: result.verification };
+}
+
+export async function resendVerification(token: string): Promise<{ verification?: Delivery }> {
+  return post<{ verification?: Delivery }>("/auth/resend-verification", {}, token);
 }
 
 export async function login(username: string, password: string): Promise<AuthResult> {

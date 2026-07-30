@@ -26,6 +26,12 @@ export interface Env extends ContentEnv {
    * cost of everyone being signed out if that object is ever wiped.
    */
   AUTH_SECRET?: string;
+  /** Mail provider key. Unset means links are logged instead of sent. */
+  RESEND_API_KEY?: string;
+  /** From address, e.g. "Party Plus <no-reply@example.com>". */
+  EMAIL_FROM?: string;
+  /** Public URL of the web app, for building links in emails. */
+  APP_URL?: string;
 }
 
 const MAX_MEMBERS = 12;

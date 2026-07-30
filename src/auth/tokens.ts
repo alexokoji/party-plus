@@ -24,6 +24,16 @@ export interface IdentityClaims {
   /** Display name at issue time. The room may still rename them. */
   name: string;
   kind: TokenKind;
+  /**
+   * Password version at issue time, for accounts.
+   *
+   * Tokens are stateless and last a month, so a password reset would otherwise
+   * leave every existing session alive — including the intruder's, which is
+   * usually the exact reason someone is resetting. The auth object bumps this
+   * on every password change, and a token carrying a stale value is refused.
+   * Guests have no password and no version, so they need no lookup.
+   */
+  pv?: number;
   /** Issued at, epoch ms. */
   iat: number;
   /** Expires at, epoch ms. */
@@ -126,7 +136,7 @@ async function verify<T>(token: string, secret: string, now: number): Promise<T 
 }
 
 export async function issueIdentity(
-  claims: { sub: string; name: string; kind: TokenKind },
+  claims: { sub: string; name: string; kind: TokenKind; pv?: number },
   secret: string,
   now = Date.now(),
   ttlMs = IDENTITY_TTL_MS

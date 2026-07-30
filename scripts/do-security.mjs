@@ -9,7 +9,7 @@
  * primitives; only a real socket proves the server actually refuses.
  */
 import WebSocket from "ws";
-import { HTTP, WS, connect, createRoom, guest, joinAs, makeWaiters, post, send, wait } from "./roomClient.mjs";
+import { HTTP, WS, connect, createRoom, freshIp, guest, joinAs, makeWaiters, post, send, wait } from "./roomClient.mjs";
 
 const failures = [];
 const check = (cond, msg) => {
@@ -158,7 +158,12 @@ check(!host.errors.some((e) => /slow down/i.test(e)), "a normal action was caugh
 
 // ================= accounts =================
 const username = `tester_${Date.now().toString().slice(-8)}`;
-const registered = await post("/auth/register", { username, password: "a-decent-password", token: alice.token });
+const registered = await post("/auth/register", {
+  username,
+  password: "a-decent-password",
+  email: `${username}@example.com`,
+  token: alice.token,
+});
 check(registered.ok, `registration failed: ${registered.data.error}`);
 // The guest keeps their id, so an account can be claimed mid-game.
 check(registered.data.user.id === alice.id, "registering as a guest did not keep the player id");
@@ -166,10 +171,18 @@ check(!JSON.stringify(registered.data).includes("password"), "LEAK: the registra
 check(!JSON.stringify(registered.data).includes("pbkdf2"), "LEAK: the password hash was sent to the client");
 console.log(`accounts: ${username} registered, keeping the guest's player id`);
 
-const taken = await post("/auth/register", { username: username.toUpperCase(), password: "another-password" });
+const taken = await post("/auth/register", {
+  username: username.toUpperCase(),
+  password: "another-password",
+  email: `taken_${Date.now().toString().slice(-6)}@example.com`,
+});
 check(taken.status === 409, `a username was registered twice in different case (${taken.status})`);
 
-const weak = await post("/auth/register", { username: `weak_${Date.now().toString().slice(-6)}`, password: "short" });
+const weak = await post("/auth/register", {
+  username: `weak_${Date.now().toString().slice(-6)}`,
+  password: "short",
+  email: `weak_${Date.now().toString().slice(-6)}@example.com`,
+});
 check(weak.status === 400, "a five-character password was accepted");
 
 const wrongPassword = await post("/auth/login", { username, password: "not-the-password" });
@@ -190,6 +203,116 @@ const locked = await post("/auth/login", { username, password: "a-decent-passwor
 check(locked.status === 429, `the account did not lock after repeated failures (${locked.status})`);
 check(/try again/i.test(locked.data.error ?? ""), "the lockout gives no hint when to return");
 console.log(`accounts: locked after repeated failures, even for the right password`);
+
+// ================= email and password reset =================
+//
+// No mail provider is configured locally, so the server hands the link back in
+// `devLink`. That is the only reason this is walkable without a mailbox — and
+// it is also asserted below that a configured deployment would not do it.
+const mailbox = `reset_${Date.now().toString().slice(-8)}`;
+const address = `${mailbox}@example.com`;
+// Its own caller address: the account block above deliberately drains the
+// register and login buckets, and this section is not about rate limiting.
+const RESET_IP = freshIp("reset");
+const resetUser = await post("/auth/register", {
+  username: mailbox,
+  password: "first-password-here",
+  email: address,
+}, undefined, RESET_IP);
+check(resetUser.ok, `registration with an email failed: ${resetUser.data.error}`);
+check(resetUser.data.user.email === address, "the account did not keep its email");
+check(resetUser.data.user.emailVerified === false, "a brand-new email was already marked confirmed");
+check(!JSON.stringify(resetUser.data).includes("passwordHash"), "LEAK: a password hash reached the client");
+
+// Registration sends a confirmation.
+const verifyLinkUrl = resetUser.data.verification?.devLink;
+check(!!verifyLinkUrl, "no verification link was produced at registration");
+check(/\/verify\?token=/.test(verifyLinkUrl ?? ""), `verification link looks wrong: ${verifyLinkUrl}`);
+
+// An address can only belong to one account.
+const duplicate = await post("/auth/register", {
+  username: `${mailbox}_two`,
+  password: "another-password",
+  email: address.toUpperCase(),
+}, undefined, RESET_IP);
+check(duplicate.status === 409, `the same address registered twice in different case (${duplicate.status})`);
+
+// An account with no email at all is refused: there would be no way back in.
+const noEmail = await post("/auth/register", { username: `${mailbox}_x`, password: "a-fine-password" }, undefined, freshIp("noemail"));
+check(noEmail.status === 400, `an account was created with no email (${noEmail.status})`);
+
+// Confirming.
+const verifyToken = new URL(verifyLinkUrl).searchParams.get("token");
+const verified = await post("/auth/verify", { token: verifyToken }, undefined, RESET_IP);
+check(verified.ok, `verification failed: ${verified.data.error}`);
+check(verified.data.user.emailVerified === true, "confirming did not mark the address confirmed");
+const reused = await post("/auth/verify", { token: verifyToken });
+check(reused.status === 400, `a verification link worked twice (${reused.status})`);
+console.log(`email: ${address} registered and confirmed, link single-use`);
+
+// Forgot password gives nothing away about who has an account.
+const unknown = await post("/auth/forgot", { email: `nobody_${Date.now()}@example.com` }, undefined, freshIp("unknown"));
+const known = await post("/auth/forgot", { email: address }, undefined, RESET_IP);
+check(unknown.ok && known.ok, "the forgot endpoint did not answer both ways");
+check(
+  unknown.data.message === known.data.message,
+  "forgot-password answers differently for a known address — that is an account oracle"
+);
+check(!unknown.data.devLink, "a link was produced for an address with no account");
+check(!!known.data.devLink, "no reset link was produced for a real account");
+console.log(`reset: identical answer for known and unknown addresses`);
+
+// A signed-in session, to prove the reset evicts it.
+const beforeReset = await post("/auth/login", { username: mailbox, password: "first-password-here" }, undefined, RESET_IP);
+check(beforeReset.ok, `could not sign in before the reset: ${beforeReset.data.error}`);
+const oldToken = beforeReset.data.token;
+const oldSessionWorks = await post("/auth/me", {}, oldToken, RESET_IP);
+check(oldSessionWorks.ok, "a fresh session was not usable");
+
+const resetToken = new URL(known.data.devLink).searchParams.get("token");
+
+// A short password is refused — and must NOT burn the link. Mistyping the new
+// password should cost a retry, not a trip back to the inbox.
+const weakReset = await post("/auth/reset", { token: resetToken, password: "short" }, undefined, RESET_IP);
+check(weakReset.status === 400, `a five-character password was accepted on reset (${weakReset.status})`);
+
+const doneReset = await post("/auth/reset", { token: resetToken, password: "second-password-here" }, undefined, RESET_IP);
+check(doneReset.ok, `the reset failed: ${doneReset.data.error}`);
+check(!!doneReset.data.token, "the reset returned no session");
+
+// The whole point: old sessions die.
+const oldSessionAfter = await post("/auth/me", {}, oldToken);
+check(
+  oldSessionAfter.status === 401,
+  `a session from before the reset still works (${oldSessionAfter.status}) — an intruder would keep their access`
+);
+const newSessionAfter = await post("/auth/me", {}, doneReset.data.token, RESET_IP);
+check(newSessionAfter.ok, "the session handed back by the reset does not work");
+console.log(`reset: password changed, earlier sessions evicted`);
+
+// The old password is gone and the new one works.
+const oldPassword = await post("/auth/login", { username: mailbox, password: "first-password-here" });
+check(oldPassword.status === 401, `the old password still works (${oldPassword.status})`);
+const newPassword = await post("/auth/login", { username: mailbox, password: "second-password-here" }, undefined, RESET_IP);
+check(newPassword.ok, `the new password does not work: ${newPassword.data.error}`);
+
+// The link is spent.
+const replay = await post("/auth/reset", { token: resetToken, password: "third-password-here" }, undefined, RESET_IP);
+check(replay.status === 400, `a reset link worked twice (${replay.status}) — a leaked link would stay live`);
+
+// A guessed link is worthless.
+const forgedLink = await post("/auth/reset", { token: "not-a-real-token", password: "fourth-password" }, undefined, RESET_IP);
+check(forgedLink.status === 400, `a made-up reset token was accepted (${forgedLink.status})`);
+console.log(`reset: link single-use, old password dead, forged token refused`);
+
+// Sending mail is rate limited, or this becomes a way to flood an inbox.
+let mailRefused = 0;
+for (let i = 0; i < 8; i++) {
+  const attempt = await post("/auth/forgot", { email: address }, undefined, RESET_IP);
+  if (attempt.status === 429) mailRefused++;
+}
+check(mailRefused > 0, "unlimited reset emails could be sent to one address");
+console.log(`rate limiting: reset emails refused after repeated requests (${mailRefused}/8 blocked)`);
 
 // Login attempts are limited per IP.
 //

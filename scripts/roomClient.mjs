@@ -26,12 +26,23 @@ export const WS = `ws://127.0.0.1:${PORT}`;
  */
 export const RUN_IP = `test-${Math.random().toString(36).slice(2)}-${process.pid}`;
 
-export async function post(path, body, token) {
+/**
+ * A caller address distinct from the run's default.
+ *
+ * Sections of a test that deliberately exhaust a limit would otherwise poison
+ * everything after them: the account tests are not about rate limiting, and
+ * failing them because an earlier block drained the login bucket tells you
+ * nothing. Different people come from different addresses; this says so.
+ */
+export const freshIp = (label = "x") =>
+  `test-${label}-${Math.random().toString(36).slice(2)}-${process.pid}`;
+
+export async function post(path, body, token, ip = RUN_IP) {
   const response = await fetch(`${HTTP}${path}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "CF-Connecting-IP": RUN_IP,
+      "CF-Connecting-IP": ip,
       ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body ?? {}),

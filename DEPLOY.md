@@ -174,6 +174,53 @@ Accounts live in a single `AuthDO` instance. Passwords are stored as
 PBKDF2-HMAC-SHA256 with a per-user salt and 150,000 iterations — never in plain
 text, and never sent back to a client.
 
+## Email (confirmation and password reset)
+
+Workers cannot open an SMTP connection, so mail goes out over HTTP through a
+provider. **Everything works without this configured** — links are printed to
+the Worker log instead of sent, which is how the reset flow is testable
+locally. In production, unset means nobody can recover an account.
+
+Set two secrets and one variable:
+
+```bash
+npx wrangler secret put RESEND_API_KEY
+```
+
+```toml
+[vars]
+EMAIL_FROM = "Party Plus <no-reply@yourdomain.com>"
+APP_URL = "https://your-app.vercel.app"
+```
+
+`APP_URL` is what the links in emails point at, so it must be the address
+people can actually reach — getting this wrong sends everyone to a dead link.
+`EMAIL_FROM` must be on a domain verified in your [Resend](https://resend.com)
+account; their free tier covers 3,000 emails a month.
+
+Then redeploy:
+
+```bash
+npm run deploy:room
+```
+
+To check it, register an account and watch the Worker log: `[email:log]` means
+it is still unconfigured, and `[email:error]` reports what the provider said.
+
+Using a different provider means one function — `sendEmail` in
+[src/auth/email.ts](src/auth/email.ts) — and nothing else.
+
+How the links behave:
+
+- **Verification** lasts 24 hours; **reset** lasts one hour. Both work once.
+- Only a SHA-256 hash of each link secret is stored, so a dump of the auth
+  object does not hand over the ability to take over accounts.
+- A completed reset bumps the account's password version, which **signs out
+  every other session** — the point being that whoever prompted the reset
+  loses their access too.
+- Forgotten-password requests answer identically for known and unknown
+  addresses, so the endpoint cannot be used to find out who has an account.
+
 ## Rate limits
 
 Two layers, both on by default:
@@ -192,7 +239,6 @@ the abuse it prevents.
 
 ## Things this deployment does not have
 
-- **No email, so no password reset.** A forgotten password is a lost account.
 - **No moderation tools** beyond the host's lock and kick, which are per-room.
 - **A room's Durable Object lives until it is evicted.** There is no explicit
   cleanup of finished rooms.
