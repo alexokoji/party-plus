@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   IDENTITY_TTL_MS,
   issueIdentity,
@@ -9,7 +9,14 @@ import {
   verifyIdentity,
   verifyTicket,
 } from "./tokens";
-import { checkCredentials, hashPassword, needsRehash, usernameKey, verifyPassword } from "./passwords";
+import {
+  checkCredentials,
+  hashPassword,
+  MAX_WORKERS_ITERATIONS,
+  needsRehash,
+  usernameKey,
+  verifyPassword,
+} from "./passwords";
 
 const SECRET = "test-secret-not-used-anywhere-real";
 const NOW = 1_700_000_000_000;
@@ -145,6 +152,28 @@ describe("passwords", () => {
   it("uses a real iteration count by default", async () => {
     const stored = await hashPassword("a-long-enough-password");
     expect(Number(stored.split("$")[1])).toBeGreaterThanOrEqual(100_000);
+  });
+
+  it("stays within the ceiling the Workers runtime enforces", async () => {
+    // The runtime refuses PBKDF2 above 100,000 iterations, and local
+    // `wrangler dev` does NOT enforce it — so a higher number passes every
+    // test here and then throws on the first real registration in production.
+    // It did. This is the guard.
+    const stored = await hashPassword("a-long-enough-password");
+    expect(Number(stored.split("$")[1])).toBeLessThanOrEqual(MAX_WORKERS_ITERATIONS);
+  });
+
+  it("refuses a hash this runtime cannot reproduce, rather than throwing", async () => {
+    // Exactly what production did: the runtime rejects the stored parameters.
+    // A hash written before the cap was known must not turn a login into a
+    // 500 for everybody who has one.
+    const stored = await hashPassword("a-long-enough-password", 1000);
+    const deriveBits = vi
+      .spyOn(crypto.subtle, "deriveBits")
+      .mockRejectedValue(new Error("Pbkdf2 failed: iteration counts above 100000 are not supported"));
+
+    await expect(verifyPassword("a-long-enough-password", stored)).resolves.toBe(false);
+    deriveBits.mockRestore();
   });
 });
 

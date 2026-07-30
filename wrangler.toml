@@ -58,11 +58,18 @@ ALLOWED_ORIGINS = "https://party-plus-mu.vercel.app,https://party-plus-stridr-so
 # password-reset emails, so it must be the address people can actually reach.
 APP_URL = "https://party-plus-mu.vercel.app"
 
-# Sending email needs a provider key and a from address. Leave them unset and
-# links are printed to the Worker log instead of sent — which is what makes the
-# reset flow testable locally without signing up for anything.
+# Sending email needs a provider key and a from address. Leave the key unset
+# and links are printed to the Worker log instead of sent — which is what makes
+# the reset flow testable locally without signing up for anything.
+#
+# The KEY is a secret and must never live in this file, which is public:
 #   npx wrangler secret put RESEND_API_KEY
-# EMAIL_FROM = "Party Plus <no-reply@yourdomain.com>"
+#
+# resend.dev is Resend's shared test domain. It sends, but it only DELIVERS to
+# the address that owns the Resend account — real players will not receive
+# anything until a domain of your own is verified with Resend and this is
+# changed to an address on it.
+EMAIL_FROM = "Party Plus <noreply@resend.dev>"
 
 # Optional content store, so word and question packs can be updated without a
 # redeploy. Neither is required — the bundled packs work on their own.

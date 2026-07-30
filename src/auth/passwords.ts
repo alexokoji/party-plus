@@ -11,7 +11,21 @@
  * everyone's password: verify with the stored count, re-hash on next login.
  */
 
-const ITERATIONS = 150_000;
+/**
+ * Iteration count.
+ *
+ * 100,000 is not a preference — it is the ceiling the Workers runtime enforces
+ * ("Pbkdf2 failed: iteration counts above 100000 are not supported"). Local
+ * `wrangler dev` does NOT enforce it, so a higher number passes every test on
+ * a laptop and then throws on the first real registration in production. It
+ * did exactly that here.
+ *
+ * Higher would be better — current guidance for PBKDF2-SHA256 is several
+ * hundred thousand — so this leans harder on the things that are not capped:
+ * per-account lockout after five failures, and per-IP limits on login.
+ */
+export const MAX_WORKERS_ITERATIONS = 100_000;
+const ITERATIONS = MAX_WORKERS_ITERATIONS;
 const SALT_BYTES = 16;
 const KEY_BITS = 256;
 
@@ -75,8 +89,16 @@ export async function verifyPassword(password: string, stored: string): Promise<
     return false;
   }
 
-  const actual = await derive(password, salt, iterations);
-  return timingSafeEqual(actual, expected);
+  try {
+    const actual = await derive(password, salt, iterations);
+    return timingSafeEqual(actual, expected);
+  } catch {
+    // A stored hash whose parameters this runtime cannot reproduce — a hash
+    // written at 150,000 iterations before the Workers cap was discovered, for
+    // instance. Refuse the login rather than throwing a 500 out of the auth
+    // endpoint; the account is recoverable through a password reset.
+    return false;
+  }
 }
 
 /** True when a hash should be replaced because the cost has since gone up. */

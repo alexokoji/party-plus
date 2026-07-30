@@ -51,6 +51,23 @@ async function connect(identity, code) {
 
 const send = (c, msg) => c.ws.send(JSON.stringify(msg));
 
+/**
+ * Waits for a condition instead of guessing at a sleep.
+ *
+ * Fixed delays that are generous on a laptop are not generous against a real
+ * edge network, and a smoke test that fails intermittently teaches people to
+ * ignore it.
+ */
+async function waitFor(predicate, label, timeoutMs = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (predicate()) return true;
+    await wait(100);
+  }
+  failures.push(`TIMEOUT waiting for ${label}`);
+  return false;
+}
+
 const health = await fetch(`${base}/health`).then((r) => r.json());
 check(health.ok === true, `health check failed: ${JSON.stringify(health)}`);
 console.log(`health: ${JSON.stringify(health)}`);
@@ -74,18 +91,23 @@ check(probe.status === 404, `probing a made-up code returned ${probe.status}, no
 
 const hostClient = await connect(alice, code);
 const guestClient = await connect(bola, code);
-await wait(800);
+await waitFor(() => hostClient.snapshot?.members.length === 2, "both players to appear");
 
 check(hostClient.snapshot?.members.length === 2, `expected 2 members, saw ${hostClient.snapshot?.members.length}`);
 check(hostClient.snapshot?.hostId === alice.id, "the room creator is not the host");
 check((hostClient.snapshot?.catalog ?? []).length >= 13, "the catalog is short");
 
 send(hostClient, { type: "selectGame", gameId: "liars-dice" });
-await wait(500);
+await waitFor(() => hostClient.snapshot?.gameId === "liars-dice", "the game to be selected");
+
 for (const c of [hostClient, guestClient]) send(c, { type: "ready", ready: true });
-await wait(500);
+await waitFor(
+  () => hostClient.snapshot?.members.filter((m) => m.seated).every((m) => m.ready),
+  "both players to ready up"
+);
+
 send(hostClient, { type: "start" });
-await wait(1200);
+await waitFor(() => hostClient.snapshot?.phase === "playing", "the match to start");
 
 check(hostClient.snapshot?.phase === "playing", `match did not start (${hostClient.snapshot?.phase})`);
 check(hostClient.snapshot?.view?.myDice?.length === 5, "the host was not dealt dice");
@@ -97,6 +119,34 @@ const foreign = (hostClient.snapshot?.view?.dice ?? []).filter(
 check(foreign.length === 0, `LEAK: ${foreign.length} of another player's dice reached the host`);
 
 console.log(`room ${code}: 2 players seated, Liar's Dice started, hidden dice stayed hidden`);
+
+// ---- accounts, which only guests exercised before ----
+//
+// This is here because it was missed once: password hashing threw in
+// production and nowhere else, because the Workers runtime caps PBKDF2
+// iterations and local `wrangler dev` does not. Every registration 500'd and
+// a guest-only smoke test sailed straight past it.
+const stamp = Date.now().toString().slice(-8);
+const account = await post("/auth/register", {
+  username: `smoke_${stamp}`,
+  password: "a-decent-password",
+  // Resend's simulator inbox: a real send, delivered to nobody. Plus-addressed
+  // so each run is a distinct account — an address can only be registered once.
+  email: `delivered+${stamp}@resend.dev`,
+});
+check(account.status === 200, `registration failed (${account.status}): ${account.data.error}`);
+check(!!account.data.token, "registration returned no session");
+
+const signIn = await post("/auth/login", { username: `smoke_${stamp}`, password: "a-decent-password" });
+check(signIn.ok, `sign-in failed (${signIn.status}): ${signIn.data.error}`);
+check(signIn.data.user?.id === account.data.user?.id, "signing in produced a different player");
+
+// No devLink means a provider really took the message; its presence means the
+// deployment is still logging links instead of sending them.
+const configured = account.data.verification && !account.data.verification.devLink;
+console.log(
+  `accounts: registered and signed in — email ${configured ? "sent via a provider" : "NOT configured (links logged, not sent)"}`
+);
 
 for (const c of [hostClient, guestClient]) c.ws.close();
 await wait(300);
