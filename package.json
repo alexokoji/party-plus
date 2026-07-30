@@ -17,6 +17,7 @@
     "test:new-games": "node scripts/do-new-games.mjs",
     "test:party-games": "node scripts/do-party-games.mjs",
     "test:security": "node scripts/do-security.mjs",
+    "prod-smoke": "node scripts/prod-smoke.mjs",
     "deploy:room": "wrangler deploy"
   },
   "dependencies": {

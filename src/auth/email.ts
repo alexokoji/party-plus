@@ -107,6 +107,29 @@ export interface SendResult {
   error?: string;
   /** Development only: the link, so it can be followed without a mailbox. */
   devLink?: string;
+  /**
+   * Accepted by the provider, but on a shared test domain that only delivers
+   * to the account owner. Everybody else gets silence.
+   */
+  restricted?: boolean;
+  /** Provider message id, for tracing a specific send in their dashboard. */
+  id?: string;
+}
+
+/**
+ * Shared sending domains that accept mail and then deliver almost none of it.
+ *
+ * Resend's `resend.dev` returns a perfectly healthy 200 for any recipient but
+ * only delivers to the address that owns the account. Without naming it here,
+ * a deployment using it looks completely fine from the server's side while
+ * every real user waits for a confirmation email that is never coming — the
+ * worst kind of failure, because nothing anywhere reports it.
+ */
+const TEST_SENDING_DOMAINS = ["resend.dev"];
+
+export function isTestSendingDomain(from: string | undefined): boolean {
+  const domain = (from ?? "").match(/@([^>\s]+)/)?.[1]?.toLowerCase() ?? "";
+  return TEST_SENDING_DOMAINS.includes(domain);
 }
 
 /**
@@ -154,7 +177,18 @@ export async function sendEmail(
       console.log(`[email:error] resend returned ${response.status}: ${detail.slice(0, 200)}`);
       return { sent: false, via: "resend", error: `provider returned ${response.status}` };
     }
-    return { sent: true, via: "resend" };
+
+    const { id } = (await response.json().catch(() => ({}))) as { id?: string };
+    const restricted = isTestSendingDomain(env.EMAIL_FROM);
+    // Logged on success too, because "accepted" and "arrived" are different
+    // things and only the id makes a specific send traceable afterwards.
+    console.log(
+      restricted
+        ? `[email:restricted] accepted (${id ?? "no id"}) from a shared test domain — ` +
+            `only the provider account owner will receive it. Verify your own domain to reach real users.`
+        : `[email:sent] ${id ?? "no id"} to ${maskEmail(message.to)}`
+    );
+    return { sent: true, via: "resend", id, restricted };
   } catch (e) {
     console.log(`[email:error] ${e instanceof Error ? e.message : String(e)}`);
     return { sent: false, via: "resend", error: "could not reach the mail provider" };

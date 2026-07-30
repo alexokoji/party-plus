@@ -65,7 +65,18 @@ export function AccountPanel({ onName }: AccountPanelProps) {
    */
   function reportDelivery(delivery: Delivery | undefined, sentMessage: string) {
     setDevLink(delivery?.devLink ?? null);
-    setNotice(delivery?.devLink ? "No mail provider configured — use the link below." : sentMessage);
+    if (delivery?.devLink) {
+      return setNotice("No mail provider configured — use the link below.");
+    }
+    // Accepted by the provider but undeliverable to most people. Saying "check
+    // your inbox" here would be a lie, and the person would wait for something
+    // that is never coming.
+    if (delivery?.restricted) {
+      return setNotice(
+        "This site is still using a test sending domain, so confirmation email only reaches the site owner. Your account works — you just cannot confirm the address or reset the password by email yet."
+      );
+    }
+    setNotice(sentMessage);
   }
 
   async function submit(e: React.FormEvent) {
@@ -90,8 +101,10 @@ export function AccountPanel({ onName }: AccountPanelProps) {
         reset();
       } else if (mode === "forgot") {
         const result = await forgotPassword(email);
-        setDevLink(result.devLink ?? null);
-        setNotice(result.devLink ? "No mail provider configured — use the link below." : result.message);
+        reportDelivery(
+          { sent: true, via: "server", devLink: result.devLink, restricted: result.restricted },
+          result.message
+        );
         reset();
       } else if (mode === "addEmail") {
         const result = await setEmailRequest(email, token);

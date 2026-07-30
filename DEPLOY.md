@@ -204,8 +204,32 @@ Then redeploy:
 npm run deploy:room
 ```
 
-To check it, register an account and watch the Worker log: `[email:log]` means
-it is still unconfigured, and `[email:error]` reports what the provider said.
+To check it, register an account and watch the Worker log:
+
+| Log line | What it means |
+| --- | --- |
+| `[email:log]` | No provider configured. The link is printed, not sent. |
+| `[email:sent]` | Really sent, with the provider's message id. |
+| `[email:restricted]` | Accepted, but on a shared test domain — see below. |
+| `[email:error]` | The provider refused it, with its reason. |
+
+### The trap: `resend.dev` accepts everything and delivers almost nothing
+
+Resend's shared `resend.dev` domain returns a healthy `200` for **any**
+recipient, and then only delivers to the address that owns the Resend account.
+Nothing reports this — not the API response, not the dashboard's send count —
+so a deployment looks completely healthy while every real user waits for a
+confirmation email that is never coming.
+
+The server detects it from the sending domain and says so: the signup UI tells
+the person their account works but email does not, the log says
+`[email:restricted]`, and `npm run prod-smoke` prints
+`ACCEPTED BUT UNDELIVERABLE`.
+
+**The only real fix is a domain of your own.** One costs a few pounds a year:
+add it in Resend, paste the DNS records they give you, and change `EMAIL_FROM`
+to an address on it. Until then, treat account confirmation and password reset
+as unavailable.
 
 Using a different provider means one function — `sendEmail` in
 [src/auth/email.ts](src/auth/email.ts) — and nothing else.

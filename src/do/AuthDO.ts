@@ -294,7 +294,7 @@ export class AuthDO {
     user: StoredUser,
     purpose: OneTimePurpose,
     email: string
-  ): Promise<{ sent: boolean; via: string; devLink?: string }> {
+  ): Promise<{ sent: boolean; via: string; devLink?: string; restricted?: boolean }> {
     const secret = newOneTimeSecret();
     const record: OneTimeToken = {
       hash: await hashOneTimeSecret(secret),
@@ -311,7 +311,12 @@ export class AuthDO {
         ? verificationEmail(user.emailDisplay ?? email, user.displayName, link)
         : resetEmail(user.emailDisplay ?? email, user.displayName, link);
     const result = await sendEmail(this.env, message, link);
-    return { sent: result.sent, via: result.via, devLink: result.devLink };
+    return {
+      sent: result.sent,
+      via: result.via,
+      devLink: result.devLink,
+      restricted: result.restricted,
+    };
   }
 
   /**
@@ -382,7 +387,9 @@ export class AuthDO {
     const delivery = await this.sendOneTime(user, "reset", emailKey(email));
     // devLink only appears when no mail provider is configured, which is
     // development — it is how the flow is testable without a mailbox.
-    return Response.json({ ...same, devLink: delivery.devLink });
+    // `restricted` says the provider took it but will not deliver it, which
+    // the person waiting deserves to know rather than watching an empty inbox.
+    return Response.json({ ...same, devLink: delivery.devLink, restricted: delivery.restricted });
   }
 
   /** Finishes a reset: new password, every old session dead. */

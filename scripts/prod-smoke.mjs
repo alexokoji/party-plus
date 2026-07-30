@@ -141,12 +141,23 @@ const signIn = await post("/auth/login", { username: `smoke_${stamp}`, password:
 check(signIn.ok, `sign-in failed (${signIn.status}): ${signIn.data.error}`);
 check(signIn.data.user?.id === account.data.user?.id, "signing in produced a different player");
 
-// No devLink means a provider really took the message; its presence means the
-// deployment is still logging links instead of sending them.
-const configured = account.data.verification && !account.data.verification.devLink;
-console.log(
-  `accounts: registered and signed in — email ${configured ? "sent via a provider" : "NOT configured (links logged, not sent)"}`
-);
+// Three distinct states, and only one of them means real users get mail:
+//   devLink   → no provider configured; links are logged, not sent
+//   restricted → a provider took it, but a shared test sending domain means
+//                only the provider account owner will ever receive it
+//   neither    → actually delivered to whoever asked
+const delivery = account.data.verification ?? {};
+const state = delivery.devLink
+  ? "NOT configured — links logged, not sent"
+  : delivery.restricted
+    ? "ACCEPTED BUT UNDELIVERABLE — test sending domain, only the account owner receives it"
+    : "sent for real";
+console.log(`accounts: registered and signed in — email ${state}`);
+// Not a failure: a deployment can be perfectly healthy without mail. It is
+// reported loudly because it is invisible everywhere else.
+if (delivery.restricted) {
+  console.log("           → verify your own domain with the provider to reach real users");
+}
 
 for (const c of [hostClient, guestClient]) c.ws.close();
 await wait(300);

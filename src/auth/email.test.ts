@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   emailKey,
   hashOneTimeSecret,
+  isTestSendingDomain,
   isValidEmail,
   maskEmail,
   newOneTimeSecret,
@@ -184,6 +185,36 @@ describe("sending", () => {
     expect(init.headers).toMatchObject({ authorization: "Bearer secret-key" });
     const body = JSON.parse(init.body as string);
     expect(body).toMatchObject({ from: "Party <a@b.co>", to: ["ada@example.com"], subject: "s" });
+  });
+
+  it("flags a shared test sending domain, which accepts mail and drops it", async () => {
+    // The failure this exists to stop being silent: Resend answers 200 for
+    // any recipient on resend.dev but only delivers to the account owner, so
+    // the server sees success while real users get nothing at all.
+    globalThis.fetch = vi.fn(
+      async () => new Response(JSON.stringify({ id: "abc" }), { status: 200 })
+    ) as unknown as typeof fetch;
+
+    const restricted = await sendEmail(
+      { RESEND_API_KEY: "k", EMAIL_FROM: "Party Plus <noreply@resend.dev>" },
+      message
+    );
+    expect(restricted).toMatchObject({ sent: true, restricted: true, id: "abc" });
+
+    const real = await sendEmail(
+      { RESEND_API_KEY: "k", EMAIL_FROM: "Party Plus <no-reply@partyplus.example>" },
+      message
+    );
+    expect(real.restricted).toBeFalsy();
+  });
+
+  it("recognises the test domain however the from address is written", () => {
+    expect(isTestSendingDomain("Party Plus <noreply@resend.dev>")).toBe(true);
+    expect(isTestSendingDomain("onboarding@RESEND.DEV")).toBe(true);
+    expect(isTestSendingDomain("no-reply@partyplus.example")).toBe(false);
+    // A lookalike domain is somebody else's, not the shared one.
+    expect(isTestSendingDomain("hi@resend.dev.evil.example")).toBe(false);
+    expect(isTestSendingDomain(undefined)).toBe(false);
   });
 
   it("reports a provider error without throwing", async () => {

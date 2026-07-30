@@ -37,6 +37,11 @@ export interface Delivery {
   sent: boolean;
   via: string;
   devLink?: string;
+  /**
+   * The provider accepted it but will not deliver it — a shared test sending
+   * domain. Surfaced so nobody is told to check an inbox that will stay empty.
+   */
+  restricted?: boolean;
 }
 
 export interface AuthResult {
@@ -158,8 +163,10 @@ export async function register(
  * same answer for an unknown one, so this endpoint cannot be used to find out
  * who has an account.
  */
-export async function forgotPassword(email: string): Promise<{ message: string; devLink?: string }> {
-  return post<{ message: string; devLink?: string }>("/auth/forgot", { email });
+export async function forgotPassword(
+  email: string
+): Promise<{ message: string; devLink?: string; restricted?: boolean }> {
+  return post<{ message: string; devLink?: string; restricted?: boolean }>("/auth/forgot", { email });
 }
 
 /** Finishes a reset. The returned token replaces every earlier session. */
