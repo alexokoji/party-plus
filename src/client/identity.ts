@@ -42,6 +42,8 @@ export interface Delivery {
    * domain. Surfaced so nobody is told to check an inbox that will stay empty.
    */
   restricted?: boolean;
+  /** The provider refused it outright, with its reason. */
+  error?: string;
 }
 
 export interface AuthResult {

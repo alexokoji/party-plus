@@ -68,9 +68,19 @@ export function AccountPanel({ onName }: AccountPanelProps) {
     if (delivery?.devLink) {
       return setNotice("No mail provider configured — use the link below.");
     }
-    // Accepted by the provider but undeliverable to most people. Saying "check
-    // your inbox" here would be a lie, and the person would wait for something
-    // that is never coming.
+    /**
+     * The provider refused it. This is the case that actually happens on a
+     * deployment with no verified sending domain — Resend answers 403 for any
+     * recipient but the account owner — and telling somebody to check their
+     * inbox after that is simply false. They will wait, then conclude the site
+     * is broken, which it partly is.
+     */
+    if (delivery && delivery.sent === false) {
+      return setNotice(
+        "Your account is ready, but the confirmation email could not be sent — this site has no verified sending domain yet, so email confirmation and password reset are unavailable. Nothing else is affected."
+      );
+    }
+    // Sent, but on a shared test domain that only reaches the site owner.
     if (delivery?.restricted) {
       return setNotice(
         "This site is still using a test sending domain, so confirmation email only reaches the site owner. Your account works — you just cannot confirm the address or reset the password by email yet."
@@ -100,11 +110,12 @@ export function AccountPanel({ onName }: AccountPanelProps) {
         onName?.(result.account.name);
         reset();
       } else if (mode === "forgot") {
+        // This endpoint deliberately reports nothing about whether the address
+        // has an account, or whether the mail actually left — either would say
+        // who is registered here. Its fixed message is all there is.
         const result = await forgotPassword(email);
-        reportDelivery(
-          { sent: true, via: "server", devLink: result.devLink, restricted: result.restricted },
-          result.message
-        );
+        setDevLink(result.devLink ?? null);
+        setNotice(result.devLink ? "No mail provider configured — use the link below." : result.message);
         reset();
       } else if (mode === "addEmail") {
         const result = await setEmailRequest(email, token);

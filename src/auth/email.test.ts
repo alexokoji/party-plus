@@ -217,6 +217,30 @@ describe("sending", () => {
     expect(isTestSendingDomain(undefined)).toBe(false);
   });
 
+  it("reports the refusal a real unverified account gets", async () => {
+    // What Resend actually answers without a verified domain — a hard 403,
+    // not a silent drop:
+    //   "You can only send testing emails to your own email address"
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            statusCode: 403,
+            message: "You can only send testing emails to your own email address (owner@example.com).",
+          }),
+          { status: 403 }
+        )
+    ) as unknown as typeof fetch;
+
+    const result = await sendEmail(
+      { RESEND_API_KEY: "k", EMAIL_FROM: "Party Plus <noreply@resend.dev>" },
+      message
+    );
+    // sent:false is what the UI keys off to avoid saying "check your inbox".
+    expect(result.sent).toBe(false);
+    expect(result.error).toContain("403");
+  });
+
   it("reports a provider error without throwing", async () => {
     // A mail provider having a bad day must not turn a password reset into a
     // 500 — the caller answers the same way regardless.

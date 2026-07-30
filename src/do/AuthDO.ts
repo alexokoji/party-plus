@@ -294,7 +294,7 @@ export class AuthDO {
     user: StoredUser,
     purpose: OneTimePurpose,
     email: string
-  ): Promise<{ sent: boolean; via: string; devLink?: string; restricted?: boolean }> {
+  ): Promise<{ sent: boolean; via: string; devLink?: string; restricted?: boolean; error?: string }> {
     const secret = newOneTimeSecret();
     const record: OneTimeToken = {
       hash: await hashOneTimeSecret(secret),
@@ -316,6 +316,9 @@ export class AuthDO {
       via: result.via,
       devLink: result.devLink,
       restricted: result.restricted,
+      // Passed up so the person waiting is told the mail did not go, rather
+      // than being sent to watch an inbox the provider already refused.
+      error: result.error,
     };
   }
 
@@ -389,6 +392,18 @@ export class AuthDO {
     // development — it is how the flow is testable without a mailbox.
     // `restricted` says the provider took it but will not deliver it, which
     // the person waiting deserves to know rather than watching an empty inbox.
+    /**
+     * The reply stays identical whether or not the send worked.
+     *
+     * Reporting a failure here would undo the very thing this endpoint is
+     * careful about: no send is attempted for an address with no account, so
+     * "the mail failed" would appear only for addresses that DO have one —
+     * an account oracle by the back door. Delivery problems surface in the
+     * Worker log and at registration, where the address is already known.
+     *
+     * (`devLink` has the same shape, but only ever appears when no mail
+     * provider is configured at all, which is local development.)
+     */
     return Response.json({ ...same, devLink: delivery.devLink, restricted: delivery.restricted });
   }
 
