@@ -1,0 +1,251 @@
+{
+  "kind": "trivia",
+  "id": "trivia-naija",
+  "name": "Naija & Africa",
+  "description": "Nigerian history, geography, music and film, plus the wider continent.",
+  "locale": "en-NG",
+  "questions": [
+    {
+      "id": "ng-independence",
+      "question": "On what date did Nigeria gain independence from Britain?",
+      "options": ["1 October 1960", "1 October 1963", "29 May 1960", "12 June 1960"],
+      "answerIndex": 0,
+      "category": "history",
+      "note": "Nigeria became a republic three years later, on 1 October 1963."
+    },
+    {
+      "id": "ng-capital",
+      "question": "Which city became Nigeria's capital in 1991?",
+      "options": ["Lagos", "Abuja", "Kaduna", "Ibadan"],
+      "answerIndex": 1,
+      "category": "geography",
+      "note": "The capital moved from Lagos to Abuja on 12 December 1991."
+    },
+    {
+      "id": "ng-states",
+      "question": "How many states does Nigeria have?",
+      "options": ["30", "35", "36", "37"],
+      "answerIndex": 2,
+      "category": "geography",
+      "note": "36 states plus the Federal Capital Territory."
+    },
+    {
+      "id": "ng-first-president",
+      "question": "Who was Nigeria's first president?",
+      "options": ["Tafawa Balewa", "Nnamdi Azikiwe", "Obafemi Awolowo", "Yakubu Gowon"],
+      "answerIndex": 1,
+      "category": "history",
+      "note": "Azikiwe became ceremonial president when Nigeria became a republic in 1963; Balewa was the first prime minister."
+    },
+    {
+      "id": "ng-soyinka-nobel",
+      "question": "Wole Soyinka won the Nobel Prize in Literature in which year?",
+      "options": ["1976", "1982", "1986", "1991"],
+      "answerIndex": 2,
+      "category": "literature",
+      "note": "The first African writer to win the prize."
+    },
+    {
+      "id": "ng-achebe",
+      "question": "Who wrote the novel Things Fall Apart?",
+      "options": ["Chinua Achebe", "Wole Soyinka", "Cyprian Ekwensi", "Buchi Emecheta"],
+      "answerIndex": 0,
+      "category": "literature"
+    },
+    {
+      "id": "ng-currency",
+      "question": "What is Nigeria's currency?",
+      "options": ["Cedi", "Naira", "Shilling", "Franc"],
+      "answerIndex": 1,
+      "category": "geography"
+    },
+    {
+      "id": "ng-rivers-confluence",
+      "question": "The Niger and Benue rivers meet at which city?",
+      "options": ["Onitsha", "Lokoja", "Makurdi", "Jebba"],
+      "answerIndex": 1,
+      "category": "geography"
+    },
+    {
+      "id": "ng-afrobeat-fela",
+      "question": "Which Nigerian musician pioneered Afrobeat?",
+      "options": ["King Sunny Adé", "Fela Kuti", "Ebenezer Obey", "Victor Olaiya"],
+      "answerIndex": 1,
+      "category": "music"
+    },
+    {
+      "id": "ng-burna-grammy",
+      "question": "Burna Boy won his first Grammy in 2021 with which album?",
+      "options": ["African Giant", "Twice as Tall", "Love, Damini", "Outside"],
+      "answerIndex": 1,
+      "category": "music",
+      "note": "Twice as Tall won Best Global Music Album."
+    },
+    {
+      "id": "ng-nollywood",
+      "question": "What is Nigeria's film industry commonly called?",
+      "options": ["Naijawood", "Nollywood", "Lagoswood", "Kannywood"],
+      "answerIndex": 1,
+      "category": "film",
+      "note": "Kannywood is the Hausa-language industry based in Kano."
+    },
+    {
+      "id": "ng-super-eagles-afcon",
+      "question": "How many times have the Super Eagles won the Africa Cup of Nations?",
+      "options": ["1", "2", "3", "4"],
+      "answerIndex": 2,
+      "category": "sport",
+      "note": "1980, 1994 and 2013."
+    },
+    {
+      "id": "ng-olympic-football",
+      "question": "Nigeria won Olympic gold in men's football at which games?",
+      "options": ["Barcelona 1992", "Atlanta 1996", "Sydney 2000", "Athens 2004"],
+      "answerIndex": 1,
+      "category": "sport",
+      "note": "The Dream Team beat Argentina in the 1996 final."
+    },
+    {
+      "id": "ng-largest-city",
+      "question": "Which is Nigeria's largest city by population?",
+      "options": ["Abuja", "Kano", "Lagos", "Ibadan"],
+      "answerIndex": 2,
+      "category": "geography"
+    },
+    {
+      "id": "ng-zuma-rock",
+      "question": "Zuma Rock stands near which Nigerian city?",
+      "options": ["Jos", "Abuja", "Enugu", "Sokoto"],
+      "answerIndex": 1,
+      "category": "geography"
+    },
+    {
+      "id": "ng-olumo",
+      "question": "Olumo Rock is a landmark of which city?",
+      "options": ["Abeokuta", "Akure", "Osogbo", "Ilorin"],
+      "answerIndex": 0,
+      "category": "geography"
+    },
+    {
+      "id": "ng-languages",
+      "question": "Which three languages are Nigeria's most widely spoken indigenous languages?",
+      "options": [
+        "Hausa, Yoruba, Igbo",
+        "Hausa, Fulfulde, Tiv",
+        "Yoruba, Efik, Ijaw",
+        "Igbo, Kanuri, Nupe"
+      ],
+      "answerIndex": 0,
+      "category": "culture"
+    },
+    {
+      "id": "ng-biafra-war",
+      "question": "The Nigerian Civil War was fought between which years?",
+      "options": ["1963–1966", "1967–1970", "1970–1975", "1966–1968"],
+      "answerIndex": 1,
+      "category": "history"
+    },
+    {
+      "id": "ng-june-12",
+      "question": "Nigeria's Democracy Day is now marked on which date?",
+      "options": ["29 May", "12 June", "1 October", "27 August"],
+      "answerIndex": 1,
+      "category": "history",
+      "note": "Moved from 29 May to 12 June in 2018, marking the annulled 1993 election."
+    },
+    {
+      "id": "ng-queen-amina",
+      "question": "Queen Amina was a warrior queen of which historic city-state?",
+      "options": ["Zazzau (Zaria)", "Oyo", "Benin", "Nri"],
+      "answerIndex": 0,
+      "category": "history"
+    },
+    {
+      "id": "ng-benin-bronzes",
+      "question": "The famous Benin Bronzes were made by artists of which kingdom?",
+      "options": ["Kingdom of Benin", "Oyo Empire", "Kanem-Bornu", "Ashanti"],
+      "answerIndex": 0,
+      "category": "art",
+      "note": "The Kingdom of Benin, in present-day Edo State — not the neighbouring Republic of Benin."
+    },
+    {
+      "id": "ng-osun-festival",
+      "question": "The Osun-Osogbo Sacred Grove festival honours which deity?",
+      "options": ["Sango", "Osun", "Ogun", "Yemoja"],
+      "answerIndex": 1,
+      "category": "culture",
+      "note": "The grove is a UNESCO World Heritage Site."
+    },
+    {
+      "id": "ng-jollof",
+      "question": "Which ingredient gives Nigerian jollof rice its base colour?",
+      "options": ["Turmeric", "Tomato and pepper", "Palm oil", "Beetroot"],
+      "answerIndex": 1,
+      "category": "food"
+    },
+    {
+      "id": "ng-suya",
+      "question": "Suya is traditionally seasoned with which spice mix?",
+      "options": ["Yaji", "Berbere", "Ras el hanout", "Garam masala"],
+      "answerIndex": 0,
+      "category": "food"
+    },
+    {
+      "id": "af-most-populous",
+      "question": "Which is Africa's most populous country?",
+      "options": ["Egypt", "Ethiopia", "Nigeria", "DR Congo"],
+      "answerIndex": 2,
+      "category": "geography"
+    },
+    {
+      "id": "af-largest-area",
+      "question": "Which is Africa's largest country by land area?",
+      "options": ["Algeria", "DR Congo", "Sudan", "Libya"],
+      "answerIndex": 0,
+      "category": "geography"
+    },
+    {
+      "id": "af-highest-peak",
+      "question": "What is Africa's highest mountain?",
+      "options": ["Mount Kenya", "Kilimanjaro", "Mount Stanley", "Ras Dashen"],
+      "answerIndex": 1,
+      "category": "geography"
+    },
+    {
+      "id": "af-au-hq",
+      "question": "Where is the African Union headquartered?",
+      "options": ["Nairobi", "Accra", "Addis Ababa", "Pretoria"],
+      "answerIndex": 2,
+      "category": "politics"
+    },
+    {
+      "id": "af-ghana-independence",
+      "question": "Which was the first sub-Saharan African country to gain independence from colonial rule?",
+      "options": ["Nigeria", "Ghana", "Kenya", "Senegal"],
+      "answerIndex": 1,
+      "category": "history",
+      "note": "Ghana, in 1957, under Kwame Nkrumah."
+    },
+    {
+      "id": "af-mandela",
+      "question": "In which year did Nelson Mandela become South Africa's president?",
+      "options": ["1990", "1992", "1994", "1996"],
+      "answerIndex": 2,
+      "category": "history"
+    },
+    {
+      "id": "af-lake-victoria",
+      "question": "Lake Victoria is bordered by Tanzania, Kenya and which other country?",
+      "options": ["Rwanda", "Uganda", "Burundi", "Zambia"],
+      "answerIndex": 1,
+      "category": "geography"
+    },
+    {
+      "id": "af-victoria-falls",
+      "question": "Victoria Falls sits on the border of Zambia and which country?",
+      "options": ["Botswana", "Mozambique", "Zimbabwe", "Namibia"],
+      "answerIndex": 2,
+      "category": "geography"
+    }
+  ]
+}

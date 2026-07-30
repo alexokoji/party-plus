@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.next-size/
+dist/
+dist-check/
+dist-deploy/
+.vercel/
+.wrangler/
+*.tsbuildinfo
+.env*.local

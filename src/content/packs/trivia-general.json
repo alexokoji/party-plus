@@ -1,0 +1,223 @@
+{
+  "kind": "trivia",
+  "id": "trivia-general",
+  "name": "General knowledge",
+  "description": "Geography, science, history and a little pop culture.",
+  "locale": "en",
+  "questions": [
+    {
+      "id": "gen-planet-red",
+      "question": "Which planet is known as the Red Planet?",
+      "options": ["Venus", "Mars", "Jupiter", "Mercury"],
+      "answerIndex": 1,
+      "category": "science",
+      "note": "Iron oxide dust gives Mars its colour."
+    },
+    {
+      "id": "gen-largest-ocean",
+      "question": "What is the largest ocean on Earth?",
+      "options": ["Atlantic", "Indian", "Pacific", "Arctic"],
+      "answerIndex": 2,
+      "category": "geography"
+    },
+    {
+      "id": "gen-h2o",
+      "question": "What does the chemical formula H₂O describe?",
+      "options": ["Salt", "Water", "Hydrogen peroxide", "Ammonia"],
+      "answerIndex": 1,
+      "category": "science"
+    },
+    {
+      "id": "gen-continents",
+      "question": "How many continents are there, by the most common count?",
+      "options": ["5", "6", "7", "8"],
+      "answerIndex": 2,
+      "category": "geography"
+    },
+    {
+      "id": "gen-longest-river",
+      "question": "Which river is generally listed as the longest in the world?",
+      "options": ["Amazon", "Nile", "Yangtze", "Mississippi"],
+      "answerIndex": 1,
+      "category": "geography",
+      "note": "The Nile is usually given as longest, though some surveys of the Amazon dispute it."
+    },
+    {
+      "id": "gen-everest",
+      "question": "Mount Everest sits on the border between Nepal and which other country?",
+      "options": ["India", "China", "Bhutan", "Pakistan"],
+      "answerIndex": 1,
+      "category": "geography"
+    },
+    {
+      "id": "gen-speed-light",
+      "question": "Roughly how fast does light travel in a vacuum?",
+      "options": ["300,000 km per second", "300,000 km per hour", "3,000 km per second", "30,000 km per second"],
+      "answerIndex": 0,
+      "category": "science"
+    },
+    {
+      "id": "gen-bones",
+      "question": "How many bones are in the adult human body?",
+      "options": ["186", "206", "226", "246"],
+      "answerIndex": 1,
+      "category": "science"
+    },
+    {
+      "id": "gen-ww2-end",
+      "question": "In which year did the Second World War end?",
+      "options": ["1943", "1944", "1945", "1946"],
+      "answerIndex": 2,
+      "category": "history"
+    },
+    {
+      "id": "gen-moon-first",
+      "question": "Who was the first person to walk on the Moon?",
+      "options": ["Buzz Aldrin", "Yuri Gagarin", "Neil Armstrong", "Michael Collins"],
+      "answerIndex": 2,
+      "category": "history"
+    },
+    {
+      "id": "gen-currency-japan",
+      "question": "What is the currency of Japan?",
+      "options": ["Won", "Yuan", "Yen", "Ringgit"],
+      "answerIndex": 2,
+      "category": "geography"
+    },
+    {
+      "id": "gen-mona-lisa",
+      "question": "Who painted the Mona Lisa?",
+      "options": ["Michelangelo", "Leonardo da Vinci", "Raphael", "Donatello"],
+      "answerIndex": 1,
+      "category": "art"
+    },
+    {
+      "id": "gen-elements-gold",
+      "question": "What is the chemical symbol for gold?",
+      "options": ["Go", "Gd", "Au", "Ag"],
+      "answerIndex": 2,
+      "category": "science",
+      "note": "From the Latin aurum. Ag is silver."
+    },
+    {
+      "id": "gen-world-cup-2022",
+      "question": "Which country won the 2022 FIFA World Cup?",
+      "options": ["France", "Brazil", "Argentina", "Croatia"],
+      "answerIndex": 2,
+      "category": "sport"
+    },
+    {
+      "id": "gen-largest-country",
+      "question": "Which is the largest country in the world by land area?",
+      "options": ["Canada", "China", "Russia", "United States"],
+      "answerIndex": 2,
+      "category": "geography"
+    },
+    {
+      "id": "gen-shakespeare",
+      "question": "Who wrote the play Romeo and Juliet?",
+      "options": ["Charles Dickens", "William Shakespeare", "Jane Austen", "Christopher Marlowe"],
+      "answerIndex": 1,
+      "category": "literature"
+    },
+    {
+      "id": "gen-heart-chambers",
+      "question": "How many chambers does the human heart have?",
+      "options": ["2", "3", "4", "5"],
+      "answerIndex": 2,
+      "category": "science"
+    },
+    {
+      "id": "gen-sahara",
+      "question": "The Sahara is the largest hot desert on which continent?",
+      "options": ["Asia", "Africa", "South America", "Australia"],
+      "answerIndex": 1,
+      "category": "geography"
+    },
+    {
+      "id": "gen-photosynthesis",
+      "question": "Which gas do plants take in for photosynthesis?",
+      "options": ["Oxygen", "Nitrogen", "Carbon dioxide", "Hydrogen"],
+      "answerIndex": 2,
+      "category": "science"
+    },
+    {
+      "id": "gen-olympics-rings",
+      "question": "How many rings are on the Olympic flag?",
+      "options": ["4", "5", "6", "7"],
+      "answerIndex": 1,
+      "category": "sport"
+    },
+    {
+      "id": "gen-capital-australia",
+      "question": "What is the capital of Australia?",
+      "options": ["Sydney", "Melbourne", "Canberra", "Perth"],
+      "answerIndex": 2,
+      "category": "geography"
+    },
+    {
+      "id": "gen-binary",
+      "question": "How many digits does the binary number system use?",
+      "options": ["1", "2", "8", "10"],
+      "answerIndex": 1,
+      "category": "science"
+    },
+    {
+      "id": "gen-great-wall",
+      "question": "The Great Wall is a landmark of which country?",
+      "options": ["Japan", "India", "China", "Mongolia"],
+      "answerIndex": 2,
+      "category": "geography"
+    },
+    {
+      "id": "gen-blood-type",
+      "question": "Which blood type is known as the universal donor for red cells?",
+      "options": ["AB positive", "O negative", "A positive", "B negative"],
+      "answerIndex": 1,
+      "category": "science"
+    },
+    {
+      "id": "gen-piano-keys",
+      "question": "How many keys does a standard full-size piano have?",
+      "options": ["76", "80", "88", "96"],
+      "answerIndex": 2,
+      "category": "music"
+    },
+    {
+      "id": "gen-fastest-land",
+      "question": "What is the fastest land animal?",
+      "options": ["Lion", "Cheetah", "Pronghorn", "Horse"],
+      "answerIndex": 1,
+      "category": "nature"
+    },
+    {
+      "id": "gen-internet-www",
+      "question": "What does WWW stand for?",
+      "options": ["World Wide Web", "Wide World Web", "Web World Wide", "World Web Wide"],
+      "answerIndex": 0,
+      "category": "technology"
+    },
+    {
+      "id": "gen-largest-mammal",
+      "question": "What is the largest animal alive today?",
+      "options": ["African elephant", "Blue whale", "Giraffe", "Whale shark"],
+      "answerIndex": 1,
+      "category": "nature"
+    },
+    {
+      "id": "gen-freezing",
+      "question": "At what temperature does water freeze, in degrees Celsius?",
+      "options": ["-10", "0", "10", "32"],
+      "answerIndex": 1,
+      "category": "science",
+      "note": "32 is the answer in Fahrenheit."
+    },
+    {
+      "id": "gen-un-founded",
+      "question": "In which year was the United Nations founded?",
+      "options": ["1919", "1945", "1948", "1950"],
+      "answerIndex": 1,
+      "category": "history"
+    }
+  ]
+}

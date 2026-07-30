@@ -1,0 +1,27 @@
+{
+  "kind": "words",
+  "id": "words-naija",
+  "name": "Naija",
+  "description": "Nigerian places, food, music and everyday life. Clues land differently here.",
+  "locale": "en-NG",
+  "words": [
+    "ABUJA", "AGBADA", "AGEGE", "AKARA", "AMALA", "ASO ROCK", "BANGA", "BENIN",
+    "BIKE", "BOLI", "BUKA", "CALABAR", "CHOP", "DANFO", "DODO", "EBA",
+    "EGUSI", "EKO", "ENUGU", "FUFU", "GALA", "GARRI", "GBEDU", "GENERATOR",
+    "IBADAN", "ILE-IFE", "JOLLOF", "KANO", "KEKE", "KILIMANJARO", "KOLA", "KUNU",
+    "LAGOS", "LEKKI", "MAI", "MARKET", "MOI MOI", "NAIRA", "NEPA", "NIGER",
+    "NOLLYWOOD", "NSUKKA", "OBUDU", "OGBONO", "OKADA", "OKRA", "OLUMO", "ONITSHA",
+    "OSHODI", "OWAMBE", "PALM WINE", "PEPPER SOUP", "PLANTAIN", "PORT HARCOURT", "PUFF PUFF", "SHAKI",
+    "SHARWARMA", "SOKOTO", "SUYA", "TUWO", "UYO", "YAM", "ZARIA", "ZOBO",
+    "ADIRE", "AFROBEATS", "AGBALUMO", "AGRIC", "ANKARA", "ASO EBI", "BANKY", "BEACH",
+    "CEMENT", "CHURCH", "COCOA", "DELTA", "DRUM", "EGUNGUN", "FILLING STATION", "FLYOVER",
+    "GONGONI", "GROUNDNUT", "HARMATTAN", "HAUSA", "IGBO", "IKOYI", "JUJU", "KANNYWOOD",
+    "KEG", "LOCUST BEAN", "MASQUERADE", "MOSQUE", "NURTW", "OGA", "PALM OIL", "PEPPER",
+    "RICE", "SAHEL", "SHOE", "TALKING DRUM", "TAILOR", "TORTOISE", "TRAFFIC", "UNIFORM",
+    "WRAPPER", "YORUBA", "ZUMA ROCK", "AGBERO", "BATA", "BEADS", "CASSAVA", "COCONUT",
+    "COMPOUND", "CROSS RIVER", "FISH", "GOAT", "GUINEA CORN", "HIBISCUS", "HORSE", "JOS",
+    "KEKE NAPEP", "LANTERN", "MAIZE", "MANGO", "MILLET", "NEWSPAPER", "ORANGE", "PALM",
+    "PARLOUR", "PEPPER GRINDER", "POUNDED YAM", "RIVER", "SAND", "SEA", "STADIUM", "SUGAR CANE",
+    "SUPER EAGLES", "THUNDER", "TOMATO", "TOWN", "UMBRELLA", "VILLAGE", "WATER", "YABA"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "kind": "words",
+  "id": "words-pidgin",
+  "name": "Pidgin",
+  "description": "Naija Pidgin words and expressions. Clue-giving in pidgin encouraged.",
+  "locale": "pcm",
+  "words": [
+    "ABEG", "AJEBUTTER", "AKARA", "AREA BOY", "AGBERO", "BABALAWO", "BATTLE", "BELLE",
+    "BIKO", "BODY", "BRODA", "CHAI", "CHOP", "COMOT", "CRAZE", "DASH",
+    "DEY", "CRUISE", "DUB", "EGO", "FALL HAND", "FINE", "GBEDU", "GBESE",
+    "GIST", "GO SLOW", "GOOD", "GRAMMAR", "GROUND", "HAMMER", "HOWFA", "HUSTLE",
+    "JAPA", "JARA", "JOR", "KAI", "KOLO", "EFIKO", "KRAZE", "LEVEL",
+    "LOCATION", "MAGA", "MAKE", "MUMU", "NA", "NAIRA", "NAWA", "NO WAHALA",
+    "OGA", "OKRIKA", "GBEBORUN", "OMO", "ORISIRISI", "OYIBO", "PALAVA", "PIKIN",
+    "PLENTY", "PRESSING", "PUFF", "RUB MIND", "SABI", "SAPA", "SHAKARA", "SHEKPE",
+    "SHINE", "SISI", "SOJA", "STINGY", "SUFFER", "DUBIOUS", "BOBO", "TOUT",
+    "TRENCHES", "WAHALA", "WAKA", "WETIN", "WORK", "YAB", "YARN", "ZOBO",
+    "AJE", "BEFITTING", "BLOW", "BUKA", "CARRY", "CATCH", "CONDITION", "CORNER",
+    "CRASE", "CUT", "DULL", "ENTER", "EYE", "FAMILY", "FEEL", "FLEX",
+    "FOCUS", "GATEMAN", "GBAM", "GENERATOR", "HEAD", "HEAT", "HOLD", "HUNGER",
+    "JAMB", "JUJU", "KAMPE", "KEKE", "KOBO", "LAND", "LOYAL", "MARKET",
+    "MOUTH", "MOVE", "NEPA", "OGBONGE", "OKADA", "ONE CHANCE", "OWAMBE", "PARTY",
+    "PEPPER", "POCKET", "POSH", "PRAY", "PURE WATER", "RUN", "SCATTER", "SENSE",
+    "SHAA", "SHINE EYE", "SOFT", "SPIRIT", "STREET", "SUGAR", "TALK", "TEAR",
+    "TIRE", "TOASTING", "TRAFFIC", "TRUST", "TURN UP", "VEX", "VOICE", "WETIN DEY",
+    "WIN", "WORD", "YANGA", "ZANKU"
+  ]
+}
