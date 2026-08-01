@@ -129,6 +129,13 @@ export default {
         const refusal = await limited(request, env, limitName);
         if (refusal) return new Response(refusal.body, { status: 429, headers: { ...headers, "content-type": "application/json" } });
       }
+      /**
+       * Reachable auth actions.
+       *
+       * "grant" is deliberately absent. It is what a completed payment will
+       * call to hand over an item, and a client that could ask for it directly
+       * would be a client that could award itself the whole catalogue.
+       */
       const known = [
         "guest",
         "register",
@@ -140,6 +147,8 @@ export default {
         "verify",
         "set-email",
         "resend-verification",
+        "wardrobe",
+        "equip",
       ];
       if (!known.includes(action)) {
         return json({ error: "not found" }, { status: 404 }, headers);

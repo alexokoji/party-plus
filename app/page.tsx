@@ -29,6 +29,7 @@ export default function HomePage() {
       <GameGallery games={games} />
 
       <div className="link-row">
+        <Link href="/library">🎨 Your library</Link>
         <Link href="/room/demo">🤖 Practise Liar&apos;s Dice against bots</Link>
         <Link href="/match/demo/results">📊 Sample post-match report</Link>
       </div>

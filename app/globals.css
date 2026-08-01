@@ -2213,3 +2213,50 @@ main {
 
 .external-note { font-size: 0.76rem; opacity: 0.6; }
 .external-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+
+/* ---------- Library / store ---------- */
+
+.library { display: flex; flex-direction: column; gap: 1.4rem; }
+.library-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.library-head h2 { margin: 0 0 0.2rem; }
+.library-guest {
+  margin: 0; padding: 0.7rem 0.9rem; border-radius: 0.6rem;
+  background: rgba(240, 198, 116, 0.12); border: 1px solid rgba(240, 198, 116, 0.35);
+}
+
+.library-section h3 { margin: 0 0 0.15rem; }
+.library-section > .hint { margin: 0 0 0.7rem; }
+
+.library-grid {
+  display: grid; gap: 0.7rem;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+}
+.library-item {
+  position: relative; display: flex; flex-direction: column; gap: 0.3rem;
+  padding: 0.9rem; border-radius: 0.7rem;
+  background: var(--felt, rgba(255, 255, 255, 0.05));
+  border: 2px solid var(--felt-edge, rgba(255, 255, 255, 0.12));
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.library-item:hover { transform: translateY(-2px); }
+.library-item.equipped { border-color: #4ec98a; box-shadow: 0 0 0 1px #4ec98a inset; }
+.library-item.locked { opacity: 0.72; }
+.library-item h4 { margin: 0; font-size: 0.95rem; }
+.library-item p { margin: 0; font-size: 0.78rem; opacity: 0.85; flex: 1; }
+.library-item button { margin-top: 0.5rem; font-size: 0.82rem; padding: 0.4rem 0.7rem; }
+.library-glyph { font-size: 1.6rem; line-height: 1; }
+.library-tag {
+  position: absolute; top: 0.5rem; right: 0.5rem;
+  font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 0.1rem 0.4rem; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.library-footnote { margin: 0; font-size: 0.8rem; }
+
+@media (max-width: 720px) {
+  .library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+  .library-item { padding: 0.7rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .library-item, .library-item:hover { transition: none; transform: none; }
+}

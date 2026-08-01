@@ -7,6 +7,8 @@ import {
   verifyPassword,
 } from "../auth/passwords";
 import { issueIdentity, newPlayerId, newSecret, verifyIdentity } from "../auth/tokens";
+import { equip, ownsItem } from "../store/catalogue";
+import { emptyWardrobe, type Wardrobe } from "../store/types";
 import {
   emailKey,
   hashOneTimeSecret,
@@ -59,6 +61,15 @@ export interface StoredUser {
    * when somebody else is in your account.
    */
   passwordVersion: number;
+  /**
+   * What this account owns and what it has equipped.
+   *
+   * Kept on the server, never in the browser. Ownership decided by
+   * localStorage is ownership anyone can grant themselves with a devtools
+   * console, which would make the store pointless and every purchase feel
+   * foolish.
+   */
+  wardrobe?: Wardrobe;
   createdAt: number;
   lastLoginAt: number | null;
 }
@@ -133,6 +144,12 @@ export class AuthDO {
         return this.setEmail(body as { token?: string; email?: string });
       case "/resend-verification":
         return this.resendVerification(body as { token?: string });
+      case "/wardrobe":
+        return this.wardrobe(body as { token?: string });
+      case "/equip":
+        return this.equipItem(body as { token?: string; itemId?: string });
+      case "/grant":
+        return this.grant(body as { token?: string; itemId?: string });
       case "/secret":
         // Only ever called by the Worker in the same isolate, to verify
         // tokens and tickets without a round trip per socket message.
@@ -515,6 +532,64 @@ export class AuthDO {
 
     const delivery = await this.sendOneTime(user, "verify", user.email);
     return Response.json({ user: publicUser(user), verification: delivery });
+  }
+
+  /** Looks up the signed-in account, or null. */
+  private async accountFor(token?: string): Promise<{ user: StoredUser; key: string } | null> {
+    const claims = token ? await verifyIdentity(token, await this.secret()) : null;
+    if (!claims || claims.kind !== "user") return null;
+    const key = await this.storage.get<string>(`id:${claims.sub}`);
+    const user = key ? await this.storage.get<StoredUser>(`user:${key}`) : null;
+    if (!user || !key) return null;
+    // A token issued before a password change must not still spend.
+    if ((claims.pv ?? 0) !== (user.passwordVersion ?? 0)) return null;
+    return { user, key };
+  }
+
+  /**
+   * What this player owns.
+   *
+   * Guests get an empty wardrobe rather than an error: they can browse the
+   * store and equip the free items, and are told an account is what makes a
+   * purchase stick. That is the nudge to sign up — not a wall.
+   */
+  private async wardrobe(body: { token?: string }): Promise<Response> {
+    const account = await this.accountFor(body.token);
+    if (!account) return Response.json({ wardrobe: emptyWardrobe(), guest: true });
+    return Response.json({ wardrobe: account.user.wardrobe ?? emptyWardrobe(), guest: false });
+  }
+
+  private async equipItem(body: { token?: string; itemId?: string }): Promise<Response> {
+    const account = await this.accountFor(body.token);
+    if (!account) return Response.json({ error: "sign in to save what you equip" }, { status: 401 });
+
+    const current = account.user.wardrobe ?? emptyWardrobe();
+    const result = equip(current, String(body.itemId ?? ""));
+    if (result.error) return Response.json({ error: result.error }, { status: 400 });
+
+    account.user.wardrobe = result.wardrobe;
+    await this.storage.put(`user:${account.key}`, account.user);
+    return Response.json({ wardrobe: result.wardrobe });
+  }
+
+  /**
+   * Grants an item.
+   *
+   * This is where a completed payment will land. It is NOT reachable from the
+   * public API — the Worker does not route to it — precisely because "give me
+   * this item" must never be something a client can ask for directly. Until
+   * checkout exists, it is how a purchase is simulated in a test.
+   */
+  private async grant(body: { token?: string; itemId?: string }): Promise<Response> {
+    const account = await this.accountFor(body.token);
+    if (!account) return Response.json({ error: "not signed in" }, { status: 401 });
+
+    const itemId = String(body.itemId ?? "");
+    const wardrobe = account.user.wardrobe ?? emptyWardrobe();
+    if (!ownsItem(wardrobe, itemId)) wardrobe.owned = [...wardrobe.owned, itemId];
+    account.user.wardrobe = wardrobe;
+    await this.storage.put(`user:${account.key}`, account.user);
+    return Response.json({ wardrobe });
   }
 
   /** Changes the display name — not the username, which is the identity. */
