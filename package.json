@@ -18,7 +18,9 @@
     "test:party-games": "node scripts/do-party-games.mjs",
     "test:security": "node scripts/do-security.mjs",
     "prod-smoke": "node scripts/prod-smoke.mjs",
-    "deploy:room": "wrangler deploy"
+    "deploy:room": "wrangler deploy",
+    "test:voice": "node scripts/do-voice.mjs",
+    "test:switch": "node scripts/do-switch-game.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "^9.1.2",

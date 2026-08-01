@@ -87,6 +87,8 @@ export async function connect(identity, code, { onSnapshot, onStream } = {}) {
     errors: [],
     events: [],
     streams: [],
+    /** Voice signalling addressed to this client. */
+    voice: [],
     messages: 0,
     closed: null,
   };
@@ -98,6 +100,10 @@ export async function connect(identity, code, { onSnapshot, onStream } = {}) {
     if (msg.type === "stream") {
       client.streams.push(msg);
       onStream?.(msg, client);
+      return;
+    }
+    if (msg.type === "voice") {
+      client.voice.push(msg);
       return;
     }
     client.snapshot = msg.snapshot;

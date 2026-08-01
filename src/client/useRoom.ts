@@ -35,6 +35,8 @@ export interface Room<TView = unknown> {
   start: () => void;
   rematch: () => void;
   sendMove: (move: unknown) => void;
+  /** Host only: end the match and return everyone to the game picker. */
+  backToLobby: () => void;
   /** Host only: close the room to new players. */
   lock: (locked: boolean) => void;
   /** Host only: remove someone and keep them out. */
@@ -45,6 +47,12 @@ export interface Room<TView = unknown> {
   sendStream: (channel: string, data: unknown) => void;
   /** Subscribes to ephemeral frames from others. Returns an unsubscribe. */
   onStream: (handler: (frame: StreamFrame) => void) => () => void;
+  /** Sends WebRTC signalling to one other player. */
+  sendVoice: (to: string, signal: unknown) => void;
+  /** Subscribes to signalling addressed to us. Returns an unsubscribe. */
+  onVoice: (handler: (from: string, signal: unknown) => void) => () => void;
+  /** Publishes voice presence so others know to connect. */
+  announceVoice: (joined: boolean, muted: boolean) => void;
 }
 
 export interface StreamFrame {
@@ -74,6 +82,7 @@ export function useRoom<TView = unknown>(code: string, displayName = ""): Room<T
   const closedByUs = useRef(false);
   const nameRef = useRef(displayName);
   const streamHandlers = useRef(new Set<(frame: StreamFrame) => void>());
+  const voiceHandlers = useRef(new Set<(from: string, signal: unknown) => void>());
 
   const tokenRef = useRef("");
 
@@ -142,6 +151,12 @@ export function useRoom<TView = unknown>(code: string, displayName = ""): Room<T
         // Stream frames arrive at pointer rates: hand them straight to the
         // subscriber rather than putting them through React state, which would
         // re-render the whole room for every stroke segment.
+        if (msg.type === "voice") {
+          // Straight to the peer-connection layer: signalling is latency
+          // sensitive and has nothing to do with React state.
+          for (const handler of voiceHandlers.current) handler(msg.from, msg.signal);
+          return;
+        }
         if (msg.type === "stream") {
           for (const handler of streamHandlers.current) {
             handler({ from: msg.from, channel: msg.channel, data: msg.data });
@@ -228,6 +243,7 @@ export function useRoom<TView = unknown>(code: string, displayName = ""): Room<T
     start: () => send({ type: "start" }),
     rematch: () => send({ type: "rematch" }),
     sendMove: (move) => send({ type: "move", move }),
+    backToLobby: () => send({ type: "backToLobby" }),
     lock: (locked) => send({ type: "lock", locked }),
     kick: (id) => send({ type: "kick", playerId: id }),
     sendChat: (text) => send({ type: "chat", text }),
@@ -242,5 +258,14 @@ export function useRoom<TView = unknown>(code: string, displayName = ""): Room<T
       streamHandlers.current.add(handler);
       return () => streamHandlers.current.delete(handler) as unknown as void;
     },
+    sendVoice: (to, signal) => {
+      const ws = socketRef.current;
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "voice", to, signal }));
+    },
+    onVoice: (handler) => {
+      voiceHandlers.current.add(handler);
+      return () => voiceHandlers.current.delete(handler) as unknown as void;
+    },
+    announceVoice: (joined, muted) => send({ type: "voiceState", joined, muted }),
   };
 }

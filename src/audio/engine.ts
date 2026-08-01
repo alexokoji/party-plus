@@ -172,9 +172,26 @@ export interface VoiceOptions {
  * with a little margin. Stopping an oscillator while it is still audible is
  * exactly the click the ear reads as a cut-off sound.
  */
+
+/**
+ * True when sound can be made right now, and a nudge back towards it when not.
+ *
+ * A suspended context silently swallows every sound. Simply returning made the
+ * whole system feel unreliable — audio would work, then stop after the tab had
+ * been in the background, and never come back on its own. Asking it to resume
+ * here means the sound after this one has a chance, without ever blocking the
+ * caller or throwing on a browser that refuses.
+ */
+function audible(e: Engine | null): e is Engine {
+  if (!e) return false;
+  if (e.ctx.state === "running") return true;
+  void e.ctx.resume().catch(() => {});
+  return false;
+}
+
 export function playVoice(options: VoiceOptions): void {
   const e = getEngine();
-  if (!e || e.ctx.state !== "running") return;
+  if (!audible(e)) return;
 
   const {
     bus = "sfx",
@@ -254,7 +271,7 @@ export function playNoise(options: {
   release?: number;
 }): void {
   const e = getEngine();
-  if (!e || e.ctx.state !== "running") return;
+  if (!audible(e)) return;
 
   const {
     bus = "sfx",

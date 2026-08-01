@@ -8,6 +8,7 @@ import { getDisplayName, setDisplayName } from "../../../src/client/identity";
 import { RoomChat } from "../../../src/ui/RoomChat";
 import { RoomLobby } from "../../../src/ui/RoomLobby";
 import { TurnClock } from "../../../src/ui/TurnClock";
+import { VoicePanel } from "../../../src/ui/VoicePanel";
 import { useGameSounds } from "../../../src/audio/useGameSounds";
 import { RulesDialog } from "../../../src/ui/RulesDialog";
 import { LiarsDiceView } from "../../../src/games/liars-dice/LiarsDiceView";
@@ -349,11 +350,36 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                         : `${(snapshot.winners ?? []).map(room.nameOf).join(", ") || "Nobody"} wins`}
                     </h2>
                     {room.isHost && (
-                      <button type="button" onClick={room.rematch}>
-                        Rematch
-                      </button>
+                      <div className="result-actions">
+                        <button type="button" onClick={room.rematch}>
+                          Rematch
+                        </button>
+                        <button type="button" className="ghost" onClick={room.backToLobby}>
+                          🎲 Change game
+                        </button>
+                      </div>
                     )}
                   </div>
+                )}
+
+                {/* Mid-match, changing game ends it for everybody, so it asks
+                    first — and it lives here rather than only on the results
+                    screen, because a group usually decides to switch when the
+                    current game is not working out, not after it finishes. */}
+                {room.isHost && snapshot.phase === "playing" && (
+                  <p className="host-switch">
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => {
+                        if (window.confirm("End this match and pick a different game?")) {
+                          room.backToLobby();
+                        }
+                      }}
+                    >
+                      🎲 Change game
+                    </button>
+                  </p>
                 )}
               </>
             )}
@@ -373,12 +399,22 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             )}
           </div>
 
-          <RoomChat
-            chat={snapshot.chat}
-            nameOf={room.nameOf}
-            onSend={room.sendChat}
-            onEmote={room.sendEmote}
-          />
+          <div className="room-side">
+            <VoicePanel
+              playerId={room.playerId}
+              members={snapshot.members}
+              nameOf={room.nameOf}
+              sendVoice={room.sendVoice}
+              onVoice={room.onVoice}
+              announceVoice={room.announceVoice}
+            />
+            <RoomChat
+              chat={snapshot.chat}
+              nameOf={room.nameOf}
+              onSend={room.sendChat}
+              onEmote={room.sendEmote}
+            />
+          </div>
         </div>
       )}
     </main>

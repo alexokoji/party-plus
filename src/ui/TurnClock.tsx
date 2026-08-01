@@ -39,16 +39,23 @@ export function TurnClock({ deadline, isMyTurn, who, note }: TurnClockProps) {
     totalRef.current = Math.max(1000, deadline - Date.now());
   }
 
+  /**
+   * An interval drives the clock, not a frame loop.
+   *
+   * requestAnimationFrame stops entirely in a tab that is not being composited
+   * — backgrounded, occluded, or on a phone with the screen off — so a clock
+   * built on it freezes and then jumps when you look back. An interval keeps
+   * running (throttled, but running), and the smoothness that rAF would have
+   * bought is done in CSS instead, by transitioning the ring between values.
+   *
+   * Four updates a second is more than enough for a number that counts in
+   * seconds, and costs nothing next to a frame loop.
+   */
   useEffect(() => {
-    let frame = 0;
-    const reduced = prefersReducedMotion();
-    // A frame loop for the sweep, or a plain tick when motion is unwelcome.
-    const tick = () => {
-      setNow(Date.now());
-      frame = reduced ? window.setTimeout(tick, 1000) : requestAnimationFrame(tick);
-    };
-    tick();
-    return () => (reduced ? clearTimeout(frame) : cancelAnimationFrame(frame));
+    setNow(Date.now());
+    const period = prefersReducedMotion() ? 1000 : 250;
+    const id = window.setInterval(() => setNow(Date.now()), period);
+    return () => window.clearInterval(id);
   }, [deadline]);
 
   const msLeft = Math.max(0, deadline - now);

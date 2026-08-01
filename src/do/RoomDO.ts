@@ -392,6 +392,55 @@ export class RoomDO {
         break;
       }
 
+      /**
+       * Signalling for a peer-to-peer call.
+       *
+       * Addressed to exactly one player rather than broadcast: an offer meant
+       * for one peer is noise to everyone else, and a mesh of a dozen people
+       * would multiply that noise by twelve. Returned early — signalling does
+       * not change room state, so it needs neither a save nor a snapshot.
+       */
+      case "voice": {
+        if (typeof msg.to !== "string") return;
+        if (!room.members.some((m) => m.id === msg.to)) return;
+        const payload = JSON.stringify({ type: "voice", from: playerId, signal: msg.signal });
+        // Size cap: an SDP is a few KB, so anything much larger is not
+        // signalling and has no business being relayed.
+        if (payload.length > MAX_STREAM_BYTES) return;
+        for (const socket of this.ctx.getWebSockets()) {
+          if (this.socketPlayerId(socket) === msg.to) socket.send(payload);
+        }
+        return;
+      }
+
+      case "voiceState": {
+        me.voice = { joined: !!msg.joined, muted: !!msg.muted };
+        break;
+      }
+
+      /**
+       * Back to the lobby, which is how the group changes game.
+       *
+       * The room, its members, the chat and the voice call all survive — only
+       * the match ends. Without this the only way to play something else was
+       * for everyone to leave and rebuild the room around a new code.
+       */
+      case "backToLobby": {
+        if (!isHost) return this.sendError(ws, "only the host can change the game");
+        if (room.phase === "lobby") return;
+        room.phase = "lobby";
+        room.gameState = null;
+        room.winners = null;
+        room.seats = [];
+        room.events = [];
+        room.autoPlayed = [];
+        room.turnDeadline = null;
+        for (const m of room.members) m.ready = false;
+        void this.storage.deleteAlarm();
+        this.pushSystem(room, "back to the lobby — the host is choosing a game");
+        break;
+      }
+
       case "lock": {
         if (!isHost) return this.sendError(ws, "only the host can lock the room");
         room.locked = !!msg.locked;
@@ -608,6 +657,9 @@ export class RoomDO {
 
     member.connected = false;
     member.ready = false;
+    // Their peer connections died with the socket; leaving the badge up would
+    // show a call that is not there.
+    if (member.voice) member.voice = { joined: false, muted: member.voice.muted };
 
     // Membership deliberately survives a dropped socket, even in the lobby.
     // Removing people on disconnect meant a momentary blip cost the host their

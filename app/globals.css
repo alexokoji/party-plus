@@ -1894,7 +1894,13 @@ main {
 .ring-track { fill: none; stroke: rgba(255, 255, 255, 0.12); stroke-width: 8; }
 .ring-progress {
   fill: none; stroke: #4ec98a; stroke-width: 8; stroke-linecap: round;
-  transition: stroke 0.3s ease;
+  /* The sweep is done here rather than in a frame loop: the component updates
+     four times a second and CSS fills in between, which keeps working in a
+     throttled tab where requestAnimationFrame would simply stop. */
+  transition: stroke-dashoffset 0.26s linear, stroke 0.3s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring-progress { transition: none; }
 }
 .turn-clock-panel.warning .ring-progress { stroke: #f0c674; }
 .turn-clock-panel.urgent .ring-progress { stroke: #ff5c5c; }
@@ -2027,3 +2033,52 @@ main {
 .host-controls { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.5rem; }
 .host-controls > button { align-self: flex-start; }
 .switch-picker { margin-bottom: 0.6rem; }
+
+/* ---------- Voice chat ---------- */
+
+.room-side { display: flex; flex-direction: column; gap: 0.8rem; min-width: 0; }
+
+.voice-panel { display: flex; flex-direction: column; gap: 0.5rem; }
+.voice-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.voice-head h3 { margin: 0; font-size: 1rem; }
+.voice-actions { display: flex; gap: 0.35rem; }
+.voice-actions button { font-size: 0.82rem; padding: 0.35rem 0.7rem; }
+
+.voice-mic { background: rgba(78, 201, 138, 0.18); border-color: rgba(78, 201, 138, 0.5); }
+.voice-mic.muted { background: rgba(217, 46, 46, 0.16); border-color: rgba(217, 46, 46, 0.5); }
+
+.voice-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.voice-person {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.3rem 0.45rem; border-radius: 0.45rem;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
+}
+.voice-person.speaking { background: rgba(78, 201, 138, 0.16); }
+.voice-person.failed { opacity: 0.6; }
+
+.voice-dot {
+  flex: 0 0 auto; width: 0.55rem; height: 0.55rem; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+/* The ring pulses only while somebody is actually making sound, which is the
+   one thing a call needs to show at a glance. */
+.voice-person.speaking .voice-dot {
+  background: #4ec98a;
+  transform: scale(1.35);
+  box-shadow: 0 0 0 3px rgba(78, 201, 138, 0.22);
+}
+.voice-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voice-state { font-size: 0.72rem; opacity: 0.7; }
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-dot, .voice-person { transition: none; }
+}
+
+/* Host controls for changing game without rebuilding the room. */
+.result-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+.host-switch { margin: 0.6rem 0 0; text-align: center; }
+.host-switch button { font-size: 0.85rem; padding: 0.4rem 0.9rem; opacity: 0.85; }
+.host-switch button:hover { opacity: 1; }

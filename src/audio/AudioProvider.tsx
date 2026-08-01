@@ -45,18 +45,29 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     loaded.current = true;
   }, []);
 
-  // One-time unlock on the first interaction of any kind.
+  /**
+   * Keeps the audio context awake.
+   *
+   * This used to unlock on the FIRST gesture and then unhook itself, which
+   * broke audio in two ways that both look like "sound is unreliable":
+   *
+   *  - if that first resume() failed (it can, if the gesture is not one the
+   *    browser counts), the listeners were gone and nothing ever tried again,
+   *    so the tab stayed silent for good;
+   *  - a context can be suspended again later — backgrounding the tab, a phone
+   *    call, an iOS audio interruption — and nothing was watching for it, so
+   *    sound simply stopped mid-session with no way back.
+   *
+   * So the listeners stay attached and every gesture is a chance to recover.
+   * Resuming an already-running context is a no-op, so the cost is nothing.
+   */
   useEffect(() => {
-    let done = false;
     const onGesture = async () => {
-      if (done) return;
-      done = true;
+      if (getEngine()?.ctx.state === "running") return;
       const ok = await unlock();
-      setReady(ok);
-      if (ok && loadSettings().musicOn) startMusic();
-      for (const event of ["pointerdown", "keydown", "touchstart"]) {
-        window.removeEventListener(event, onGesture);
-      }
+      if (!ok) return;
+      setReady(true);
+      if (loadSettings().musicOn && !isMusicRunning()) startMusic();
     };
     for (const event of ["pointerdown", "keydown", "touchstart"]) {
       window.addEventListener(event, onGesture, { passive: true });
@@ -69,15 +80,18 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Pause the music when the tab is hidden: nobody wants a background tab
-  // playing at them, and it is wasted battery.
+  // playing at them, and it is wasted battery. Coming back has to resume the
+  // context first — the browser may well have suspended it while away.
   useEffect(() => {
-    const onVisibility = () => {
-      if (document.hidden) stopMusic();
-      else if (settings.musicOn && ready) startMusic();
+    const onVisibility = async () => {
+      if (document.hidden) return stopMusic();
+      const ok = await unlock();
+      setReady(ok);
+      if (ok && settings.musicOn) startMusic();
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [settings.musicOn, ready]);
+  }, [settings.musicOn]);
 
   const update = useCallback((patch: Partial<AudioSettings>) => {
     setSettings((current) => {

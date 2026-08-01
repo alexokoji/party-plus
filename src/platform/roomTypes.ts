@@ -11,6 +11,13 @@ export interface Member {
   connected: boolean;
   /** Order of arrival; seat order for games that care. */
   joinedAt: number;
+  /**
+   * Voice presence, so everyone can see who is on the call and who is muted.
+   *
+   * Absent until the player opts in — the microphone is never touched, and
+   * nothing appears here, until they press the button.
+   */
+  voice?: { joined: boolean; muted: boolean };
 }
 
 export interface ChatMessage {
@@ -76,6 +83,23 @@ export type ClientMessage =
    * authorizeStream, so no module gets an open relay by accident.
    */
   | { type: "stream"; channel: string; data: unknown }
+  /**
+   * WebRTC signalling, addressed to one other player.
+   *
+   * Voice is peer-to-peer: this carries only the offers, answers and ICE
+   * candidates needed to set a call up. No audio passes through the server —
+   * a Durable Object forwarding live media would add a round trip to every
+   * packet and bill for all of it.
+   */
+  | { type: "voice"; to: string; signal: unknown }
+  /** Announces that this player has joined voice, or muted. */
+  | { type: "voiceState"; joined: boolean; muted: boolean }
+  /**
+   * Host only: end the current match and return the room to the lobby.
+   *
+   * The way to change game without everyone leaving and rebuilding the room.
+   */
+  | { type: "backToLobby" }
   /** Host only: stop admitting new players. */
   | { type: "lock"; locked: boolean }
   /** Host only: remove someone, and keep them out. */
@@ -84,6 +108,8 @@ export type ClientMessage =
 export type ServerMessage =
   | { type: "snapshot"; snapshot: RoomSnapshot }
   | { type: "stream"; from: string; channel: string; data: unknown }
+  /** Signalling forwarded from one peer to another, with the sender named. */
+  | { type: "voice"; from: string; signal: unknown }
   | { type: "error"; message: string };
 
 /** Largest stream frame the room will relay, in bytes of JSON. */
