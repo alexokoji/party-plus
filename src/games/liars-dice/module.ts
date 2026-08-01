@@ -67,6 +67,8 @@ export const liarsDiceModule: GameModule<GameState, LiarsDiceMove, LiarsDicePlay
     tagline: "Bluff about dice nobody else can see. Call the liars.",
     minPlayers: 2,
     maxPlayers: 6,
+    category: "party",
+    modes: ["room", "solo"],
     hasHiddenState: true,
     estimatedMinutes: 15,
   },

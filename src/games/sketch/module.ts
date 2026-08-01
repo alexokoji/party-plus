@@ -221,6 +221,8 @@ export const sketchModule: GameModule<SketchState, SketchMove, SketchPlayerView>
     tagline: "Draw it badly, guess it fast. The word never reaches the guessers.",
     minPlayers: 3,
     maxPlayers: 12,
+    category: "party",
+    modes: ["room"],
     hasHiddenState: true,
     estimatedMinutes: 15,
     variants: SKETCH_VARIANTS.map((v) => ({ id: v.id, name: v.name, description: v.description })),

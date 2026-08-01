@@ -79,6 +79,8 @@ export const snakesModule: GameModule<SnakesState, SnakesMove, SnakesPlayerView>
     minPlayers: 2,
     maxPlayers: 4,
     // Nothing is hidden: the board, the tokens and every roll are public.
+    category: "board",
+    modes: ["room"],
     hasHiddenState: false,
     estimatedMinutes: 10,
     variants: SNAKES_VARIANTS.map((v) => ({ id: v.id, name: v.name, description: v.description })),

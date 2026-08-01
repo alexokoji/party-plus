@@ -174,6 +174,8 @@ export const chessModule: GameModule<ChessState, ChessMove, ChessPlayerView> = {
     tagline: "The real thing — castling, en passant, promotion and all.",
     minPlayers: 2,
     maxPlayers: 2,
+    category: "board",
+    modes: ["room"],
     hasHiddenState: false,
     estimatedMinutes: 20,
     variants: CHESS_VARIANTS.map((v) => ({ id: v.id, name: v.name, description: v.description })),

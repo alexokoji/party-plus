@@ -227,6 +227,8 @@ export const dominoesModule: GameModule<DominoesState, DominoesMove, DominoesPla
     tagline: "Match the ends, block your neighbour, and count the pips when it jams.",
     minPlayers: 2,
     maxPlayers: 4,
+    category: "board",
+    modes: ["room"],
     hasHiddenState: true,
     estimatedMinutes: 12,
     variants: DOMINOES_VARIANTS.map((v) => ({ id: v.id, name: v.name, description: v.description })),

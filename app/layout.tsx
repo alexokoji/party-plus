@@ -8,7 +8,7 @@ const display = Bebas_Neue({ weight: "400", subsets: ["latin"], variable: "--fon
 const body = Manrope({ subsets: ["latin"], variable: "--font-body" });
 
 export const metadata = {
-  title: "Party Plus — play together",
+  title: "Games Dome — play together",
   description: "Thirteen party games in one room: Liar's Dice, Whot, Ludo, Trivia and more.",
 };
 

@@ -170,6 +170,8 @@ export const crazy8sModule: GameModule<Crazy8sState, Crazy8sMove, Crazy8sPlayerV
     tagline: "Shed your hand. Eights are wild — call the suit and watch them squirm.",
     minPlayers: 2,
     maxPlayers: 6,
+    category: "card",
+    modes: ["room"],
     hasHiddenState: true,
     estimatedMinutes: 10,
     variants: CRAZY8S_VARIANTS.map((v) => ({ id: v.id, name: v.name, description: v.description })),

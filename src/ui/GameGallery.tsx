@@ -1,11 +1,32 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createRoom as createRoomOnServer, ensureIdentity, getDisplayName, setDisplayName } from "../client/identity";
 import { normalizeRoomCode } from "../platform/roomCodes";
 import { AccountPanel } from "./AccountPanel";
+import Link from "next/link";
 import { GameArt } from "./GameArt";
+import type { GameCategory } from "../platform/types";
+
+/** Shelf order, and how each one is introduced. */
+const CATEGORY_ORDER: GameCategory[] = ["party", "board", "card", "puzzle", "arcade"];
+
+const CATEGORY_LABEL: Record<GameCategory, string> = {
+  party: "Party games",
+  board: "Board games",
+  card: "Card games",
+  puzzle: "Puzzles",
+  arcade: "Arcade",
+};
+
+const CATEGORY_BLURB: Record<GameCategory, string> = {
+  party: "Loud, social, and best with a room full of people.",
+  board: "The classics, with proper rules and a server that enforces them.",
+  card: "Shuffle, deal, and keep your hand to yourself.",
+  puzzle: "Think it through. Alone or against the clock.",
+  arcade: "Quick reflexes, quick rounds.",
+};
 import type { GameMeta } from "../platform/types";
 
 export { normalizeRoomCode };
@@ -28,6 +49,16 @@ export function GameGallery({ games }: GameGalleryProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setName(getDisplayName()), []);
+
+  // Grouped once per render of the catalogue rather than per shelf.
+  const grouped = useMemo(() => {
+    const map = new Map<GameCategory, GameMeta[]>();
+    for (const game of games) {
+      const category = game.category ?? "party";
+      map.set(category, [...(map.get(category) ?? []), game]);
+    }
+    return map;
+  }, [games]);
 
   function saveName(value: string) {
     setName(value);
@@ -91,30 +122,43 @@ export function GameGallery({ games }: GameGalleryProps) {
 
       <AccountPanel onName={setName} />
 
-      <h2 className="gallery-heading">Games</h2>
-      <div className="game-gallery">
-        {games.map((game) => (
-          <article key={game.id} className="game-card">
-            <GameArt gameId={game.id} />
-            <h3>{game.name}</h3>
-            <p className="game-card-tagline">{game.tagline}</p>
-            <p className="game-card-meta">
-              {game.minPlayers}–{game.maxPlayers} players
-              {game.estimatedMinutes ? ` · ~${game.estimatedMinutes} min` : ""}
-              {game.hasHiddenState ? " · hidden info" : ""}
-            </p>
-            <button type="button" disabled={creating} onClick={() => void createRoom(game.id)}>
-              {creating ? "Creating…" : "Create room"}
-            </button>
-          </article>
-        ))}
-        <article className="game-card ghost-card">
-          <h3>More soon</h3>
-          <p className="game-card-tagline">
-            The room engine is game-agnostic — new games plug in as modules.
-          </p>
-        </article>
-      </div>
+      {/* Shelves come from the games themselves, so adding a category — or a
+          game in a new one — needs no change here. */}
+      {CATEGORY_ORDER.filter((c) => grouped.has(c)).map((category) => (
+        <section key={category} className="gallery-section">
+          <h2 className="gallery-heading">{CATEGORY_LABEL[category]}</h2>
+          <p className="gallery-blurb">{CATEGORY_BLURB[category]}</p>
+          <div className="game-gallery">
+            {(grouped.get(category) ?? []).map((game) => {
+              const solo = (game.modes ?? ["room"]).includes("solo");
+              return (
+                <article key={game.id} className="game-card">
+                  <GameArt gameId={game.id} />
+                  <h3>{game.name}</h3>
+                  <p className="game-card-tagline">{game.tagline}</p>
+                  <p className="game-card-meta">
+                    {game.minPlayers}–{game.maxPlayers} players
+                    {game.estimatedMinutes ? ` · ~${game.estimatedMinutes} min` : ""}
+                    {game.hasHiddenState ? " · hidden info" : ""}
+                  </p>
+                  <div className="game-card-actions">
+                    {/* Solo needs no room, no server and no account — so it is
+                        offered first, as the way in that costs nothing. */}
+                    {solo && (
+                      <Link className="play-solo" href={`/play/${game.id}`}>
+                        Play solo
+                      </Link>
+                    )}
+                    <button type="button" disabled={creating} onClick={() => void createRoom(game.id)}>
+                      {creating ? "Creating…" : solo ? "With friends" : "Create room"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </>
   );
 }

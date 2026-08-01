@@ -301,6 +301,8 @@ export const draughtsModule: GameModule<DraughtsState, DraughtsMove, DraughtsPla
     tagline: "Checkers, with compulsory captures and the long jumps that come with them.",
     minPlayers: 2,
     maxPlayers: 2,
+    category: "board",
+    modes: ["room"],
     hasHiddenState: false,
     estimatedMinutes: 15,
     variants: DRAUGHTS_VARIANTS.map((v) => ({ id: v.id, name: v.name, description: v.description })),

@@ -33,11 +33,33 @@ export interface GameOptionGroup {
   options: Array<{ id: string; name: string; description: string }>;
 }
 
+/**
+ * Shelves in the gallery.
+ *
+ * The platform started as party games and is not staying that way, so a game
+ * says where it belongs rather than the gallery keeping a list — otherwise
+ * every new game means editing the hub.
+ */
+export type GameCategory = "party" | "board" | "card" | "puzzle" | "arcade";
+
+/**
+ * How a game can be played.
+ *
+ * "room" needs other people and a Durable Object. "solo" runs entirely in the
+ * browser against bots or a puzzle, costs nothing to serve, and needs no
+ * account — which is what makes it the way most people will arrive.
+ */
+export type GameMode = "solo" | "room";
+
 export interface GameMeta {
   id: string;
   name: string;
   /** One-line pitch for the gallery. */
   tagline: string;
+  /** Which shelf it sits on. Defaults to party for the original thirteen. */
+  category?: GameCategory;
+  /** Ways to play it. Defaults to room-only. */
+  modes?: GameMode[];
   minPlayers: number;
   maxPlayers: number;
   /** Optional rules variants a room may choose between. */

@@ -525,6 +525,8 @@ export const holdemModule: GameModule<HoldemState, HoldemMove, HoldemPlayerView>
     tagline: "Play-money poker. Chips are just points — nothing to cash out.",
     minPlayers: 2,
     maxPlayers: 9,
+    category: "card",
+    modes: ["room"],
     hasHiddenState: true,
     estimatedMinutes: 25,
   },

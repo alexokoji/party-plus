@@ -190,6 +190,8 @@ export const whotModule: GameModule<WhotState, WhotMove, WhotPlayerView> = {
     tagline: "Shapes, numbers, and the sweet cruelty of Pick Three.",
     minPlayers: 2,
     maxPlayers: 6,
+    category: "card",
+    modes: ["room"],
     hasHiddenState: true,
     estimatedMinutes: 12,
     // Whot rules genuinely differ by region, so a room picks one rather than

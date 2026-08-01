@@ -196,20 +196,20 @@ describe("sending", () => {
     ) as unknown as typeof fetch;
 
     const restricted = await sendEmail(
-      { RESEND_API_KEY: "k", EMAIL_FROM: "Party Plus <noreply@resend.dev>" },
+      { RESEND_API_KEY: "k", EMAIL_FROM: "Games Dome <noreply@resend.dev>" },
       message
     );
     expect(restricted).toMatchObject({ sent: true, restricted: true, id: "abc" });
 
     const real = await sendEmail(
-      { RESEND_API_KEY: "k", EMAIL_FROM: "Party Plus <no-reply@partyplus.example>" },
+      { RESEND_API_KEY: "k", EMAIL_FROM: "Games Dome <no-reply@partyplus.example>" },
       message
     );
     expect(real.restricted).toBeFalsy();
   });
 
   it("recognises the test domain however the from address is written", () => {
-    expect(isTestSendingDomain("Party Plus <noreply@resend.dev>")).toBe(true);
+    expect(isTestSendingDomain("Games Dome <noreply@resend.dev>")).toBe(true);
     expect(isTestSendingDomain("onboarding@RESEND.DEV")).toBe(true);
     expect(isTestSendingDomain("no-reply@partyplus.example")).toBe(false);
     // A lookalike domain is somebody else's, not the shared one.
@@ -233,7 +233,7 @@ describe("sending", () => {
     ) as unknown as typeof fetch;
 
     const result = await sendEmail(
-      { RESEND_API_KEY: "k", EMAIL_FROM: "Party Plus <noreply@resend.dev>" },
+      { RESEND_API_KEY: "k", EMAIL_FROM: "Games Dome <noreply@resend.dev>" },
       message
     );
     // sent:false is what the UI keys off to avoid saying "check your inbox".

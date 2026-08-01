@@ -184,6 +184,8 @@ export const codewordsModule: GameModule<CodewordsState, CodewordsMove, Codeword
     tagline: "Two teams, one secret key, and a word you must never say out loud.",
     minPlayers: 4,
     maxPlayers: 12,
+    category: "party",
+    modes: ["room"],
     hasHiddenState: true,
     estimatedMinutes: 20,
     variants: CODEWORDS_VARIANTS.map((v) => ({ id: v.id, name: v.name, description: v.description })),

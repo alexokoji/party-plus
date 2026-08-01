@@ -1,3 +1,9 @@
+# DO NOT RENAME.
+#
+# Durable Object storage is addressed by Worker script name, so changing this
+# creates a new, empty namespace and orphans every account in AuthDO and every
+# room in RoomDO. The brand is "Games Dome"; this string is plumbing nobody
+# sees, and it stays as it is.
 name = "party-plus-room"
 main = "src/do/index.ts"
 compatibility_date = "2024-11-01"
@@ -69,7 +75,7 @@ APP_URL = "https://party-plus-mu.vercel.app"
 # the address that owns the Resend account — real players will not receive
 # anything until a domain of your own is verified with Resend and this is
 # changed to an address on it.
-EMAIL_FROM = "Party Plus <noreply@resend.dev>"
+EMAIL_FROM = "Games Dome <noreply@resend.dev>"
 
 # Optional content store, so word and question packs can be updated without a
 # redeploy. Neither is required — the bundled packs work on their own.

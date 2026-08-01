@@ -171,6 +171,8 @@ export const ludoModule: GameModule<LudoState, LudoMove, LudoPlayerView> = {
     // Ludo is an open-information game: everything on the board is public and
     // the dice result is published the moment it is rolled. This exercises the
     // platform's non-hidden path.
+    category: "board",
+    modes: ["room"],
     hasHiddenState: false,
     estimatedMinutes: 20,
     variants: LUDO_VARIANTS.map((v) => ({ id: v.id, name: v.name, description: v.description })),

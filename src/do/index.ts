@@ -102,7 +102,7 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
 
     if (url.pathname === "/health") {
-      return json({ ok: true, service: "party-plus-room" }, {}, headers);
+      return json({ ok: true, service: "games-dome" }, {}, headers);
     }
 
     if (!originAllowed(request, env)) {

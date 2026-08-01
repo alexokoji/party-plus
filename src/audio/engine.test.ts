@@ -87,7 +87,7 @@ describe("waking the audio context", () => {
 
     // This sound is lost — the context is asleep — but it must ask to wake up
     // rather than silently doing nothing forever.
-    playVoice({ freq: 440, duration: 0.1 });
+    playVoice({ freq: 440, hold: 0.1 });
     expect(context.resume).toHaveBeenCalled();
   });
 
@@ -98,7 +98,7 @@ describe("waking the audio context", () => {
     expect(context.state).toBe("running");
 
     context.resume.mockClear();
-    playVoice({ freq: 440, duration: 0.1 });
+    playVoice({ freq: 440, hold: 0.1 });
     // Already awake: no need to ask again.
     expect(context.resume).not.toHaveBeenCalled();
   });
@@ -130,7 +130,7 @@ describe("waking the audio context", () => {
     context.resume = vi.fn(async () => {
       throw new Error("still refused");
     });
-    expect(() => playVoice({ freq: 440, duration: 0.1 })).not.toThrow();
+    expect(() => playVoice({ freq: 440, hold: 0.1 })).not.toThrow();
     expect(() => playNoise({ duration: 0.1 })).not.toThrow();
   });
 });

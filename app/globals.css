@@ -2082,3 +2082,34 @@ main {
 .host-switch { margin: 0.6rem 0 0; text-align: center; }
 .host-switch button { font-size: 0.85rem; padding: 0.4rem 0.9rem; opacity: 0.85; }
 .host-switch button:hover { opacity: 1; }
+
+/* ---------- Gallery shelves and solo ---------- */
+
+.gallery-section { margin-top: 2.2rem; }
+.gallery-section .gallery-heading { margin: 0 0 0.15rem; }
+.gallery-blurb { margin: 0 0 0.9rem; color: var(--text-dim); font-size: 0.9rem; }
+
+.game-card-actions { display: flex; gap: 0.4rem; align-items: stretch; margin-top: 0.5rem; }
+.game-card-actions button { margin-top: 0; flex: 1 1 auto; }
+
+/* Solo is the cheapest thing we can offer, so it reads as the primary way in. */
+.play-solo {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 1 1 auto; padding: 0.45rem 0.9rem;
+  font-size: 0.95rem; font-weight: 600; text-decoration: none;
+  color: #0d1a12; background: #4ec98a;
+  border-radius: 0.5rem;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.play-solo:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+.solo-blurb { margin: 0 0 1rem; color: var(--text-dim); }
+.solo-toolbar { display: flex; justify-content: flex-end; margin-bottom: 0.6rem; }
+
+@media (max-width: 720px) {
+  .gallery-section { margin-top: 1.6rem; }
+  .gallery-blurb { font-size: 0.8rem; margin-bottom: 0.6rem; }
+  /* Stacked, because two buttons side by side on a narrow card are unreadable. */
+  .game-card-actions { flex-direction: column; gap: 0.3rem; }
+  .play-solo { font-size: 0.82rem; padding: 0.4rem 0.5rem; }
+}

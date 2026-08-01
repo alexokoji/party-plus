@@ -8,7 +8,7 @@ export default function HomePage() {
 
   return (
     <main>
-      <h1>Party Plus</h1>
+      <h1>Games Dome</h1>
       <p style={{ fontSize: "1.15rem", maxWidth: "38rem" }}>
         A room, a code, and your friends. Pick a game, ready up, and play — with chat, emotes and
         spectators built in.

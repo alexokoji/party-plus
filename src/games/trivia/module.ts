@@ -210,6 +210,8 @@ export const triviaModule: GameModule<TriviaState, TriviaMove, TriviaPlayerView>
     tagline: "Timed questions, faster answers score more. The answer key never leaves the server.",
     minPlayers: 2,
     maxPlayers: 12,
+    category: "party",
+    modes: ["room"],
     hasHiddenState: true,
     estimatedMinutes: 12,
     variants: TRIVIA_VARIANTS.map((v) => ({ id: v.id, name: v.name, description: v.description })),

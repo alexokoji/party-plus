@@ -341,6 +341,8 @@ export const werewolfModule: GameModule<WerewolfState, WerewolfMove, WerewolfPla
     tagline: "Hidden roles, nightly murder, and a village that argues badly.",
     minPlayers: 5,
     maxPlayers: 15,
+    category: "party",
+    modes: ["room"],
     hasHiddenState: true,
     estimatedMinutes: 25,
     variants: WEREWOLF_VARIANTS.map((v) => ({ id: v.id, name: v.name, description: v.description })),

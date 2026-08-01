@@ -31,7 +31,7 @@ interface Engine {
 let engine: Engine | null = null;
 let unlocked = false;
 
-const STORE_KEY = "party-plus.audio";
+const STORE_KEY = "games-dome.audio";
 
 export interface AudioSettings {
   musicVolume: number;

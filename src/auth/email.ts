@@ -94,7 +94,7 @@ export interface EmailMessage {
 export interface EmailEnv {
   /** Resend API key. Without it, mail is logged rather than sent. */
   RESEND_API_KEY?: string;
-  /** From address, e.g. "Party Plus <no-reply@yourdomain.com>". */
+  /** From address, e.g. "Games Dome <no-reply@yourdomain.com>". */
   EMAIL_FROM?: string;
   /** Public URL of the web app, for building links. */
   APP_URL?: string;
@@ -223,15 +223,15 @@ const wrap = (heading: string, body: string, action?: { url: string; label: stri
 export function verificationEmail(to: string, name: string, link: string): EmailMessage {
   return {
     to,
-    subject: "Confirm your Party Plus email",
+    subject: "Confirm your Games Dome email",
     text:
       `Hi ${name},\n\n` +
       `Confirm this address so you can reset your password if you ever lose it:\n${link}\n\n` +
-      `The link works for 24 hours. If you did not create a Party Plus account, ignore this — nothing will happen.\n`,
+      `The link works for 24 hours. If you did not create a Games Dome account, ignore this — nothing will happen.\n`,
     html: wrap(
       "Confirm your email",
       `<p>Hi ${name}, confirm this address so you can reset your password if you ever lose it.</p>
-       <p style="font-size:13px;color:#57534e">The link works for 24 hours. If you did not create a Party Plus account, ignore this — nothing will happen.</p>`,
+       <p style="font-size:13px;color:#57534e">The link works for 24 hours. If you did not create a Games Dome account, ignore this — nothing will happen.</p>`,
       { url: link, label: "Confirm email" }
     ),
   };
@@ -240,7 +240,7 @@ export function verificationEmail(to: string, name: string, link: string): Email
 export function resetEmail(to: string, name: string, link: string): EmailMessage {
   return {
     to,
-    subject: "Reset your Party Plus password",
+    subject: "Reset your Games Dome password",
     text:
       `Hi ${name},\n\n` +
       `Someone asked to reset your password. Use this link within the hour:\n${link}\n\n` +
@@ -258,7 +258,7 @@ export function resetEmail(to: string, name: string, link: string): EmailMessage
 export function passwordChangedEmail(to: string, name: string): EmailMessage {
   return {
     to,
-    subject: "Your Party Plus password was changed",
+    subject: "Your Games Dome password was changed",
     text:
       `Hi ${name},\n\n` +
       `Your password was just changed, and everywhere you were signed in has been signed out.\n\n` +

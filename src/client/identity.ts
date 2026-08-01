@@ -12,8 +12,38 @@ import { roomHttpBase } from "./roomUrl";
  * cannot become somebody else.
  */
 
-const TOKEN_KEY = "party-plus.token";
-const NAME_KEY = "party-plus.displayName";
+const TOKEN_KEY = "games-dome.token";
+const NAME_KEY = "games-dome.displayName";
+
+/**
+ * What these keys were called before the rebrand.
+ *
+ * Renaming a localStorage key silently signs everybody out and loses their
+ * name, because the new key simply is not there. So the old one is read once,
+ * copied across and removed — the rename becomes invisible instead of a mass
+ * logout.
+ */
+const LEGACY_KEYS: Record<string, string> = {
+  [TOKEN_KEY]: "party-plus.token",
+  [NAME_KEY]: "party-plus.displayName",
+};
+
+function readStored(key: string): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const current = window.localStorage.getItem(key);
+    if (current) return current;
+    const legacy = LEGACY_KEYS[key];
+    if (!legacy) return "";
+    const carried = window.localStorage.getItem(legacy);
+    if (!carried) return "";
+    window.localStorage.setItem(key, carried);
+    window.localStorage.removeItem(legacy);
+    return carried;
+  } catch {
+    return "";
+  }
+}
 
 export type AccountKind = "guest" | "user";
 
@@ -52,12 +82,7 @@ export interface AuthResult {
 }
 
 function readToken(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    return window.localStorage.getItem(TOKEN_KEY) ?? "";
-  } catch {
-    return "";
-  }
+  return readStored(TOKEN_KEY);
 }
 
 function writeToken(token: string): void {
@@ -78,12 +103,7 @@ export function clearToken(): void {
 }
 
 export function getDisplayName(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    return window.localStorage.getItem(NAME_KEY) ?? "";
-  } catch {
-    return "";
-  }
+  return readStored(NAME_KEY);
 }
 
 export function setDisplayName(name: string): void {
