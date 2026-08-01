@@ -8,6 +8,7 @@ import { getDisplayName, setDisplayName } from "../../../src/client/identity";
 import { RoomChat } from "../../../src/ui/RoomChat";
 import { RoomLobby } from "../../../src/ui/RoomLobby";
 import { TurnClock } from "../../../src/ui/TurnClock";
+import { useGameSounds } from "../../../src/audio/useGameSounds";
 import { RulesDialog } from "../../../src/ui/RulesDialog";
 import { LiarsDiceView } from "../../../src/games/liars-dice/LiarsDiceView";
 import type { LiarsDicePlayerView } from "../../../src/games/liars-dice/module";
@@ -55,11 +56,18 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const [name, setName] = useState("");
   const [rulesOpen, setRulesOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  // The host asking to pick something else while a match is on the table.
+  const [switching, setSwitching] = useState(false);
 
   useEffect(() => setName(getDisplayName()), []);
 
   const room = useRoom(roomId, name);
   const snapshot = room.snapshot;
+
+  // Every game gets audio from here: modules already emit typed events for the
+  // activity feed, so the sounds follow those rather than each view wiring its
+  // own.
+  useGameSounds(snapshot, room.playerId);
 
   // "Create room" from the gallery carries the chosen game in the URL. Apply
   // it once, and only as host — a guest arriving on a shared link must not
@@ -78,6 +86,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     appliedGame.current = true;
     room.selectGame(requestedGame);
   }, [requestedGame, snapshot, room]);
+
+  useEffect(() => {
+    if (snapshot?.phase === "lobby") setSwitching(false);
+  }, [snapshot?.phase]);
 
   function saveName(value: string) {
     setName(value);

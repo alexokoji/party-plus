@@ -1974,3 +1974,56 @@ main {
   .clock-seconds { font-size: 1.3rem; }
   .clock-who { font-size: 1rem; }
 }
+
+/* ---------- Sound control ---------- */
+
+.sound-control {
+  position: fixed; top: 0.6rem; right: 0.6rem; z-index: 60;
+  display: flex; align-items: flex-start; gap: 0.3rem;
+  padding: 0.3rem;
+  background: rgba(18, 21, 27, 0.82);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+.sound-control.open { border-radius: 0.8rem; flex-wrap: wrap; max-width: 14rem; }
+.sound-toggle {
+  display: grid; place-items: center;
+  width: 2.1rem; height: 2.1rem; padding: 0;
+  font-size: 1rem; line-height: 1;
+  background: transparent; border: none; border-radius: 50%;
+  cursor: pointer; transition: background 0.15s ease;
+}
+.sound-toggle:hover { background: rgba(255, 255, 255, 0.12); }
+.sound-toggle[aria-pressed="false"] { opacity: 0.45; }
+.sound-toggle.small { font-size: 0.85rem; opacity: 0.7; }
+
+.sound-sliders {
+  flex: 1 0 100%;
+  display: flex; flex-direction: column; gap: 0.35rem;
+  padding: 0.4rem 0.5rem 0.2rem;
+}
+.sound-sliders label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; }
+.sound-sliders span { flex: 0 0 3.2rem; opacity: 0.8; }
+.sound-sliders input[type="range"] { flex: 1; accent-color: #4ec98a; }
+.sound-sliders .hint { margin: 0.1rem 0 0; font-size: 0.7rem; }
+
+/* Keep it clear of the room header on small screens. */
+@media (max-width: 720px) {
+  .sound-control { top: 0.4rem; right: 0.4rem; padding: 0.2rem; }
+  .sound-toggle { width: 1.9rem; height: 1.9rem; font-size: 0.9rem; }
+}
+
+/* ---------- Switching game mid-room ---------- */
+
+.switch-note {
+  margin: 0.4rem 0 0; padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  background: rgba(240, 198, 116, 0.12);
+  border: 1px solid rgba(240, 198, 116, 0.35);
+  border-radius: 0.5rem;
+}
+
+.host-controls { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.5rem; }
+.host-controls > button { align-self: flex-start; }
+.switch-picker { margin-bottom: 0.6rem; }

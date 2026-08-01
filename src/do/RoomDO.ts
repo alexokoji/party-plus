@@ -284,13 +284,49 @@ export class RoomDO {
 
       case "selectGame": {
         if (!isHost) return this.sendError(ws, "only the host can choose the game");
-        if (room.phase !== "lobby") return this.sendError(ws, "a match is already under way");
         if (!getGame(msg.gameId)) return this.sendError(ws, `unknown game: ${msg.gameId}`);
+
+        const module = requireGame(msg.gameId);
+        /**
+         * Switching mid-match is allowed on purpose.
+         *
+         * Making people leave and rebuild the room to play something else is
+         * the kind of friction that ends an evening — everyone loses the code,
+         * someone does not come back. So the match is abandoned in place and
+         * the room, with all of its people, stays exactly where it is.
+         */
+        const abandoning = room.phase !== "lobby";
+        if (abandoning) {
+          room.phase = "lobby";
+          room.gameState = null;
+          room.winners = null;
+          room.seats = [];
+          room.events = [];
+          room.turnDeadline = null;
+          room.autoPlayed = [];
+          void this.storage.deleteAlarm();
+        }
+
         room.gameId = msg.gameId;
         room.gameOptions = {};
         // Changing game invalidates readiness — people agreed to a different game.
         for (const m of room.members) m.ready = false;
-        this.pushSystem(room, `game set to ${requireGame(msg.gameId).meta.name}`);
+
+        const benched = this.applySeatLimit(room, module.meta.maxPlayers);
+        this.pushSystem(
+          room,
+          abandoning
+            ? `host switched to ${module.meta.name} — the match was abandoned`
+            : `game set to ${module.meta.name}`
+        );
+        if (benched.length > 0) {
+          this.pushSystem(
+            room,
+            `${module.meta.name} seats ${module.meta.maxPlayers}, so ${benched.join(", ")} ${
+              benched.length === 1 ? "is" : "are"
+            } spectating`
+          );
+        }
         break;
       }
 
@@ -394,6 +430,30 @@ export class RoomDO {
         if (this.socketPlayerId(socket) === id) socket.close(1008, "removed from the room");
       }
     }
+  }
+
+  /**
+   * Trims the seated players to what the new game can hold.
+   *
+   * Nobody is removed from the room — a game with fewer seats turns the extras
+   * into spectators, which is a seat they can take back at the next switch.
+   * Longest-present members keep their seats, so switching to a two-player
+   * game does not hand it to whoever happened to join last.
+   *
+   * Returns the names moved to spectating, for the message in the chat.
+   */
+  private applySeatLimit(room: RoomStorage, maxPlayers: number): string[] {
+    const seated = room.members
+      .filter((m) => m.seated)
+      .sort((a, b) => a.joinedAt - b.joinedAt);
+    if (seated.length <= maxPlayers) return [];
+
+    const benched = seated.slice(maxPlayers);
+    for (const member of benched) {
+      member.seated = false;
+      member.ready = false;
+    }
+    return benched.map((m) => m.name);
   }
 
   /** Starts (or restarts) a match. Returns an error string, or null on success. */
