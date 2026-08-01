@@ -2192,3 +2192,24 @@ main {
 @media (prefers-reduced-motion: reduce) {
   .hunt-cell.right, .hunt-cell.moved, .hunt-cell.absent { animation: none; }
 }
+
+/* ---------- Third-party games ---------- */
+
+.external-game { display: flex; flex-direction: column; gap: 0.6rem; max-width: 60rem; margin: 0 auto; }
+.external-stage {
+  position: relative; width: 100%;
+  background: #14171d; border: 2px solid #3a3f47; border-radius: 0.7rem; overflow: hidden;
+}
+.external-frame { width: 100%; height: 100%; border: 0; display: block; }
+
+.external-cover {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.6rem; padding: 1.5rem; text-align: center;
+}
+.external-cover h2 { margin: 0; font-size: 1.6rem; }
+.external-cover p { margin: 0; max-width: 26rem; opacity: 0.85; }
+.external-cover button { padding: 0.6rem 1.6rem; font-size: 1rem; }
+
+.external-note { font-size: 0.76rem; opacity: 0.6; }
+.external-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }

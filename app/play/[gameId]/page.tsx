@@ -4,6 +4,9 @@ import "../../../src/games/index"; // side effect: registers room games
 import "../../../src/solo/index"; // side effect: registers solo games
 import { getGame } from "../../../src/platform/registry";
 import { getSoloGame } from "../../../src/solo/registry";
+import "../../../src/external/catalogue"; // side effect: loads third-party games
+import { getExternalGame } from "../../../src/external/registry";
+import { ExternalGameFrame } from "../../../src/ui/external/ExternalGameFrame";
 import { SoloGameFrame } from "../../../src/ui/solo/SoloGameFrame";
 import { SoloLiarsDice } from "../../../src/ui/solo/SoloLiarsDice";
 
@@ -24,13 +27,14 @@ export default async function SoloPage({ params }: { params: Promise<{ gameId: s
   const { gameId } = await params;
 
   const solo = getSoloGame(gameId);
+  const external = getExternalGame(gameId);
   const room = getGame(gameId);
-  const meta = solo?.meta ?? room?.meta;
+  const meta = solo?.meta ?? external ?? room?.meta;
 
   // Anything that cannot actually be played alone 404s rather than offering a
   // mode it cannot deliver.
   if (!meta) notFound();
-  if (!solo && !(room?.meta.modes ?? ["room"]).includes("solo")) notFound();
+  if (!solo && !external && !(room?.meta.modes ?? ["room"]).includes("solo")) notFound();
 
   return (
     <main>
@@ -40,7 +44,13 @@ export default async function SoloPage({ params }: { params: Promise<{ gameId: s
       </div>
       <p className="solo-blurb">{meta.tagline}</p>
 
-      {solo ? <SoloGameFrame gameId={gameId} /> : gameId === "liars-dice" ? <SoloLiarsDice /> : null}
+      {solo ? (
+        <SoloGameFrame gameId={gameId} />
+      ) : external ? (
+        <ExternalGameFrame game={external} />
+      ) : gameId === "liars-dice" ? (
+        <SoloLiarsDice />
+      ) : null}
     </main>
   );
 }
