@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { pulse, useFlipGroup } from "../../ui/motion";
 import { SHAPES, SHAPE_GLYPH, type Shape } from "./rules";
 import type { WhotCard } from "./deck";
 import type { WhotMove, WhotPlayerView } from "./module";
@@ -32,6 +33,15 @@ function CardFace({ card, className = "" }: { card: WhotCard; className?: string
  * component that could accidentally show an opponent's cards.
  */
 export function WhotView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove }: WhotViewProps) {
+  const tableRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
+
+  // Cards leaving your hand close the gap they left, and the pile takes the
+  // new card with a small landing beat rather than swapping it in place.
+  useFlipGroup(tableRef, view.myHand.map((c) => c.id).join("|"), { duration: 300 });
+  useEffect(() => {
+    pulse(topRef.current, "anim-play", 340);
+  }, [view.topCard?.id]);
   const [pendingWild, setPendingWild] = useState<string | null>(null);
 
   // Close the shape chooser if the turn moves on while it is open.
@@ -101,7 +111,7 @@ export function WhotView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove }
             <span className="whot-slot-label">Market</span>
             <span className="whot-back">{view.marketCount}</span>
           </div>
-          <div className="whot-slot">
+          <div ref={topRef} className="whot-slot">
             <span className="whot-slot-label">Top card</span>
             {view.topCard ? <CardFace card={view.topCard} className="big" /> : <span>—</span>}
           </div>
@@ -147,7 +157,7 @@ export function WhotView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove }
           <h3 className="hand-heading">
             Your hand · {view.myHand.length} card{view.myHand.length === 1 ? "" : "s"}
           </h3>
-          <div className="whot-hand">
+          <div ref={tableRef} className="whot-hand">
             {view.myHand.map((card) => (
               <button
                 key={card.id}

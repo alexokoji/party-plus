@@ -10,3 +10,6 @@ dist-deploy/
 .env*.local
 
 .vercel
+
+# Local Worker overrides (secrets and dev-only vars).
+.dev.vars

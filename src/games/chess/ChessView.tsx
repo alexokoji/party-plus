@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSquareSlide } from "../../ui/motion";
 import type { ChessMove, ChessPlayerView } from "./module";
 
 export interface ChessViewProps {
@@ -43,6 +44,15 @@ function formatClock(ms: number): string {
  * rights or en passant. It only decides what to highlight.
  */
 export function ChessView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove }: ChessViewProps) {
+  const boardRef = useRef<HTMLDivElement>(null);
+  // The board is rendered from a FEN, so a piece has no identity across a
+  // move; the published move is what the animation follows.
+  useSquareSlide(
+    boardRef,
+    view.lastMove?.from,
+    view.lastMove?.to,
+    `${view.lastMove?.from ?? ""}${view.lastMove?.to ?? ""}${view.history.length}`
+  );
   const [selected, setSelected] = useState<string | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string } | null>(null);
 
@@ -139,7 +149,7 @@ export function ChessView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove 
             </div>
           )}
 
-          <div className={`chess-board${flipped ? " flipped" : ""}`}>
+          <div ref={boardRef} className={`chess-board${flipped ? " flipped" : ""}`}>
             {rows.map((row, rIdx) => {
               const boardRow = flipped ? 7 - rIdx : rIdx;
               const cells = flipped ? [...row].reverse() : row;
@@ -156,6 +166,7 @@ export function ChessView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove 
                   <button
                     key={square}
                     type="button"
+                    data-square={square}
                     className={[
                       "chess-square",
                       dark ? "dark" : "light",

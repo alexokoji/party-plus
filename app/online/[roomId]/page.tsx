@@ -7,6 +7,7 @@ import { useRoom } from "../../../src/client/useRoom";
 import { getDisplayName, setDisplayName } from "../../../src/client/identity";
 import { RoomChat } from "../../../src/ui/RoomChat";
 import { RoomLobby } from "../../../src/ui/RoomLobby";
+import { TurnClock } from "../../../src/ui/TurnClock";
 import { RulesDialog } from "../../../src/ui/RulesDialog";
 import { LiarsDiceView } from "../../../src/games/liars-dice/LiarsDiceView";
 import type { LiarsDicePlayerView } from "../../../src/games/liars-dice/module";
@@ -316,20 +317,16 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                 {/* The clock belongs to whoever still has to act. It restarts
                     the moment the turn moves on, so nobody sits watching a
                     countdown for a turn that has already been played. */}
-                {room.secondsLeft !== null && snapshot.phase === "playing" && snapshot.currentPlayerId && (
-                  <p className={`turn-clock-bar${room.secondsLeft <= 10 ? " urgent" : ""}`}>
-                    <span>
-                      {room.isMyTurn
-                        ? "Your turn"
-                        : `${room.nameOf(snapshot.currentPlayerId)} to play`}
-                    </span>
-                    <span className="clock-value">
-                      {room.secondsLeft}s
-                      <span className="clock-note">
-                        {room.isMyTurn ? " — or you forfeit the turn" : " until they forfeit"}
-                      </span>
-                    </span>
-                  </p>
+                {/* Sticky, so it stays visible however far the board scrolls —
+                    in a party game the whole table needs to read it, not just
+                    whoever is holding everyone up. */}
+                {snapshot.turnDeadline !== null && snapshot.phase === "playing" && snapshot.currentPlayerId && (
+                  <TurnClock
+                    deadline={snapshot.turnDeadline}
+                    isMyTurn={room.isMyTurn}
+                    who={room.nameOf(snapshot.currentPlayerId)}
+                    note={room.isMyTurn ? "or you forfeit the turn" : "until they forfeit"}
+                  />
                 )}
                 {renderGame()}
                 {snapshot.phase === "finished" && (

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useFlipGroup } from "../../ui/motion";
+import { useTokenTravel } from "./useTokenTravel";
 import {
   BASE_RECTS,
   BASE_SLOTS,
@@ -51,6 +53,28 @@ function DiePips({ value }: { value: number }) {
 export function LudoView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove }: LudoViewProps) {
   const [rolling, setRolling] = useState(false);
   const lastRollCount = useRef(view.rollCount);
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Every pawn on the board, with a stable identity.
+   *
+   * Both animations key off this: the route walk needs to know which pawn
+   * moved and from where, and FLIP needs the same element to be findable
+   * across renders even though it is re-parented into a different cell.
+   */
+  const pawnPositions = view.players.flatMap((player) =>
+    player.pawns.map((pawn, index) => ({
+      key: `${player.id}-${index}`,
+      square: pawn.square,
+    }))
+  );
+
+  // Walks the track square by square; FLIP covers everything else (leaving
+  // base, entering the home column, being sent home by a capture).
+  useTokenTravel(boardRef, pawnPositions);
+  useFlipGroup(boardRef, pawnPositions.map((p) => `${p.key}:${p.square}`).join("|"), {
+    duration: 300,
+  });
 
   // The server decided the number; this only plays the tumble that reveals it.
   useEffect(() => {
@@ -130,7 +154,7 @@ export function LudoView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove }
       </div>
 
       <div className="ludo-layout">
-        <div className="ludo-board-cross" style={{ gridTemplateColumns: `repeat(${GRID}, 1fr)`, gridTemplateRows: `repeat(${GRID}, 1fr)` }}>
+        <div ref={boardRef} className="ludo-board-cross" style={{ gridTemplateColumns: `repeat(${GRID}, 1fr)`, gridTemplateRows: `repeat(${GRID}, 1fr)` }}>
           {/* Corner bases, one per seat */}
           {BASE_RECTS.map((rect, seat) => {
             const player = view.players[seat];
@@ -147,6 +171,7 @@ export function LudoView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove }
                       <button
                         key={i}
                         type="button"
+                        data-flip={player ? `${player.id}-${i}` : undefined}
                         className={`pawn-slot${selectable ? " selectable" : ""}`}
                         style={at(BASE_SLOTS[i]![0], BASE_SLOTS[i]![1])}
                         disabled={!selectable}
@@ -180,8 +205,9 @@ export function LudoView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove }
                   const selectable = canSelect(o.owner, o.pawn);
                   return (
                     <button
-                      key={i}
+                      key={`${o.owner}-${o.pawn}`}
                       type="button"
+                      data-flip={`${o.owner}-${o.pawn}`}
                       className={`pawn-slot${selectable ? " selectable" : ""}`}
                       style={{
                         position: "absolute",

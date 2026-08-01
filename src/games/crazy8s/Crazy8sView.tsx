@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { pulse, useFlipGroup } from "../../ui/motion";
 import { CardBack, PlayingCard } from "../../ui/PlayingCard";
 import { cardId, SUIT_GLYPH, type Suit } from "../holdem/cards";
 import type { Crazy8sMove, Crazy8sPlayerView } from "./module";
@@ -25,6 +26,15 @@ const SUIT_NAME: Record<Suit, string> = { s: "spades", h: "hearts", d: "diamonds
  * counts. There is no code path here that could show someone else's cards.
  */
 export function Crazy8sView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove }: Crazy8sViewProps) {
+  const tableRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
+
+  // Cards leaving your hand close the gap they left, and the pile takes the
+  // new card with a small landing beat rather than swapping it in place.
+  useFlipGroup(tableRef, view.myHand.map((c) => cardId(c)).join("|"), { duration: 300 });
+  useEffect(() => {
+    pulse(topRef.current, "anim-play", 340);
+  }, [view.topCard && cardId(view.topCard)]);
   const [pendingWild, setPendingWild] = useState<string | null>(null);
 
   useEffect(() => {
@@ -100,7 +110,7 @@ export function Crazy8sView({ view, playerId, isMyTurn, isPlaying, nameOf, onMov
             <span className="whot-slot-label">Stock</span>
             <span className="whot-back">{view.stockCount}</span>
           </div>
-          <div className="whot-slot">
+          <div ref={topRef} className="whot-slot">
             <span className="whot-slot-label">Top card</span>
             {view.topCard ? <PlayingCard card={view.topCard} size="big" /> : <span>—</span>}
           </div>
@@ -154,13 +164,14 @@ export function Crazy8sView({ view, playerId, isMyTurn, isPlaying, nameOf, onMov
             Your hand · {view.myHand.length} card{view.myHand.length === 1 ? "" : "s"}
             {view.mustAnnounceLastCard && view.shouldAnnounce && " · say it before they catch you!"}
           </h3>
-          <div className="whot-hand">
+          <div ref={tableRef} className="whot-hand">
             {view.myHand.map((c) => {
               const id = cardId(c);
               return (
                 <button
                   key={id}
                   type="button"
+                  data-flip={id}
                   className={`hand-card${playable.has(id) ? " playable" : ""}`}
                   disabled={!isMyTurn || !playable.has(id)}
                   onClick={() => play(id, c.rank)}

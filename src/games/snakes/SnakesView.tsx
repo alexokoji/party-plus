@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useFlipGroup } from "../../ui/motion";
 import type { SnakesMove, SnakesPlayerView } from "./module";
 
 export interface SnakesViewProps {
@@ -115,6 +116,10 @@ function Snake({ from, to, colour }: { from: number; to: number; colour: string 
 }
 
 export function SnakesView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove }: SnakesViewProps) {
+  const boardRef = useRef<HTMLDivElement>(null);
+  // Tokens slide up the board between squares instead of blinking to the new
+  // one, so a roll of five reads as movement rather than a redraw.
+  useFlipGroup(boardRef, view.players.map((p) => `${p.id}:${p.square}`).join("|"), { duration: 420 });
   const [rolling, setRolling] = useState(false);
   const lastRollCount = useRef(view.rollCount);
 
@@ -180,7 +185,7 @@ export function SnakesView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove
 
       <div className="ludo-layout">
         <div className="snakes-board-wrap">
-          <div className="snakes-board">
+          <div ref={boardRef} className="snakes-board">
             {Array.from({ length: view.boardSize }, (_, i) => {
               const square = i + 1;
               const { col, row } = squarePosition(square);
@@ -204,7 +209,12 @@ export function SnakesView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove
                   {tokens.length > 0 && (
                     <span className="cell-tokens">
                       {tokens.map((id) => (
-                        <span key={id} className={`token dot-${colourOf(id)}`} title={nameOf(id)} />
+                        <span
+                          key={id}
+                          data-flip={id}
+                          className={`token dot-${colourOf(id)}`}
+                          title={nameOf(id)}
+                        />
                       ))}
                     </span>
                   )}

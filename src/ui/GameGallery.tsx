@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { createRoom as createRoomOnServer, ensureIdentity, getDisplayName, setDisplayName } from "../client/identity";
 import { normalizeRoomCode } from "../platform/roomCodes";
 import { AccountPanel } from "./AccountPanel";
+import { GameArt } from "./GameArt";
 import type { GameMeta } from "../platform/types";
 
 export { normalizeRoomCode };
@@ -94,6 +95,7 @@ export function GameGallery({ games }: GameGalleryProps) {
       <div className="game-gallery">
         {games.map((game) => (
           <article key={game.id} className="game-card">
+            <GameArt gameId={game.id} />
             <h3>{game.name}</h3>
             <p className="game-card-tagline">{game.tagline}</p>
             <p className="game-card-meta">

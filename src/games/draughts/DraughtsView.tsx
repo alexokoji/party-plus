@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSquareSlide } from "../../ui/motion";
 import { BOARD, isPlayableSquare } from "./rules";
 import { squareName, type DraughtsMove, type DraughtsPlayerView } from "./module";
 
@@ -23,6 +24,7 @@ const key = (r: number, c: number) => `${r},${c}`;
  * highlight, so it can never offer a move the server would reject.
  */
 export function DraughtsView({ view, playerId, isMyTurn, isPlaying, nameOf, onMove }: DraughtsViewProps) {
+  const boardRef = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,6 +78,11 @@ export function DraughtsView({ view, playerId, isMyTurn, isPlaying, nameOf, onMo
   const lastFrom = view.lastMove ? key(view.lastMove.from[0], view.lastMove.from[1]) : null;
   const lastTo = view.lastMove ? key(view.lastMove.to[0], view.lastMove.to[1]) : null;
 
+  // A captured piece vanishing while the capturing piece teleports over it
+  // reads as nothing happening at all; sliding the piece across makes the jump
+  // legible, which matters most in a forced-capture game.
+  useSquareSlide(boardRef, lastFrom, lastTo, `${lastFrom}-${lastTo}-${view.players.map((p) => p.pieces).join()}`);
+
   return (
     <>
       <div className="status-bar card-panel">
@@ -112,6 +119,7 @@ export function DraughtsView({ view, playerId, isMyTurn, isPlaying, nameOf, onMo
                 <button
                   key={id}
                   type="button"
+                  data-square={id}
                   className={[
                     "draughts-square",
                     playable ? "playable" : "blocked",
