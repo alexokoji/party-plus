@@ -2113,3 +2113,82 @@ main {
   .game-card-actions { flex-direction: column; gap: 0.3rem; }
   .play-solo { font-size: 0.82rem; padding: 0.4rem 0.5rem; }
 }
+
+/* ---------- Word Hunt ---------- */
+
+.word-hunt { display: flex; flex-direction: column; gap: 0.8rem; max-width: 30rem; margin: 0 auto; }
+.hunt-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.hunt-pack { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+.hunt-pack select { padding: 0.35rem 0.5rem; border-radius: 0.4rem; }
+.hunt-score { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.hunt-grid { display: flex; flex-direction: column; gap: 0.4rem; }
+.hunt-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; }
+.hunt-cell {
+  display: grid; place-items: center;
+  aspect-ratio: 1; font-size: 1.6rem; font-weight: 800; text-transform: uppercase;
+  border: 2px solid rgba(255, 255, 255, 0.16); border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+.hunt-cell.filled { border-color: rgba(255, 255, 255, 0.4); }
+/* Flipping in sequence reads as the answer being checked letter by letter. */
+.hunt-cell.right, .hunt-cell.moved, .hunt-cell.absent {
+  animation: hunt-flip 0.42s ease both;
+}
+.hunt-cell.right { background: #3f8f5c; border-color: #3f8f5c; }
+.hunt-cell.moved { background: #b8912f; border-color: #b8912f; }
+.hunt-cell.absent { background: #3a3f47; border-color: #3a3f47; }
+
+@keyframes hunt-flip {
+  0% { transform: rotateX(0deg); }
+  50% { transform: rotateX(90deg); }
+  100% { transform: rotateX(0deg); }
+}
+
+.hunt-note { margin: 0; text-align: center; font-size: 0.95rem; }
+.hunt-note.win { color: #7ee2ab; font-weight: 700; }
+.hunt-again { align-self: center; padding: 0.5rem 1.4rem; }
+
+.hunt-keys { display: flex; flex-direction: column; gap: 0.35rem; }
+.hunt-key-row { display: flex; gap: 0.25rem; justify-content: center; }
+.hunt-key {
+  flex: 1 1 auto; min-width: 0; padding: 0.7rem 0.2rem;
+  font-size: 0.85rem; font-weight: 700;
+  background: rgba(255, 255, 255, 0.1); border: none; border-radius: 0.35rem;
+  color: inherit; cursor: pointer;
+}
+.hunt-key.wide { flex: 1.6 1 auto; font-size: 0.72rem; }
+.hunt-key.right { background: #3f8f5c; }
+.hunt-key.moved { background: #b8912f; }
+.hunt-key.absent { background: #23262c; color: #7b818c; }
+
+/* ---------- Danfo Dash ---------- */
+
+.dash { display: flex; flex-direction: column; gap: 0.6rem; max-width: 26rem; margin: 0 auto; }
+.dash-hud { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.9rem; }
+.dash-score { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.dash-best { font-size: 0.82rem; opacity: 0.7; }
+
+.dash-stage { position: relative; }
+.dash-canvas {
+  display: block; width: 100%; aspect-ratio: 3 / 4;
+  border: 2px solid #3a3f47; border-radius: 0.7rem; background: #22262e;
+  touch-action: none;
+}
+.dash-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;
+  background: rgba(12, 14, 18, 0.82); border-radius: 0.7rem; text-align: center; padding: 1rem;
+}
+.dash-overlay h2 { margin: 0; font-size: 2rem; }
+.dash-overlay p { margin: 0; font-size: 0.9rem; opacity: 0.85; max-width: 18rem; }
+
+.dash-controls { display: flex; gap: 0.5rem; }
+.dash-controls button {
+  flex: 1; padding: 1rem; font-size: 1.4rem; line-height: 1;
+  background: rgba(255, 255, 255, 0.08); border-radius: 0.6rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hunt-cell.right, .hunt-cell.moved, .hunt-cell.absent { animation: none; }
+}

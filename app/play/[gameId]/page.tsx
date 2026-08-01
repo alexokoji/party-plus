@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import "../../../src/games/index"; // side effect: registers built-in games
+import "../../../src/games/index"; // side effect: registers room games
+import "../../../src/solo/index"; // side effect: registers solo games
 import { getGame } from "../../../src/platform/registry";
+import { getSoloGame } from "../../../src/solo/registry";
+import { SoloGameFrame } from "../../../src/ui/solo/SoloGameFrame";
 import { SoloLiarsDice } from "../../../src/ui/solo/SoloLiarsDice";
 
 /**
@@ -13,23 +16,31 @@ import { SoloLiarsDice } from "../../../src/ui/solo/SoloLiarsDice";
  * arriving from a search result can be playing before they decide whether they
  * trust us with an email address.
  *
- * A game opts in by listing "solo" in its modes; anything else 404s rather
- * than offering a mode it cannot deliver.
+ * Two kinds of game land here. A room game that lists "solo" in its modes gets
+ * bots for opponents; a solo-only game (puzzle, arcade) brings its own
+ * component and needs no server at all.
  */
 export default async function SoloPage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = await params;
-  const game = getGame(gameId);
-  if (!game || !(game.meta.modes ?? ["room"]).includes("solo")) notFound();
+
+  const solo = getSoloGame(gameId);
+  const room = getGame(gameId);
+  const meta = solo?.meta ?? room?.meta;
+
+  // Anything that cannot actually be played alone 404s rather than offering a
+  // mode it cannot deliver.
+  if (!meta) notFound();
+  if (!solo && !(room?.meta.modes ?? ["room"]).includes("solo")) notFound();
 
   return (
     <main>
       <div className="room-head">
-        <h1>{game.meta.name}</h1>
+        <h1>{meta.name}</h1>
         <Link href="/">← All games</Link>
       </div>
-      <p className="solo-blurb">{game.meta.tagline}</p>
+      <p className="solo-blurb">{meta.tagline}</p>
 
-      {gameId === "liars-dice" && <SoloLiarsDice />}
+      {solo ? <SoloGameFrame gameId={gameId} /> : gameId === "liars-dice" ? <SoloLiarsDice /> : null}
     </main>
   );
 }

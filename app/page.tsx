@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { GameGallery } from "../src/ui/GameGallery";
 import { listGames } from "../src/platform/registry";
-import "../src/games/index"; // side effect: registers built-in games
+import "../src/games/index"; // side effect: registers room games
+import "../src/solo/index"; // side effect: registers solo games
+import { listSoloGames } from "../src/solo/index";
+import { toGalleryMeta } from "../src/solo/types";
 
 export default function HomePage() {
-  const games = listGames();
+  // Both catalogues, one gallery. A solo puzzle and a twelve-player party game
+  // are the same thing to someone browsing; only the way they start differs.
+  const games = [...listGames(), ...listSoloGames().map(toGalleryMeta)];
 
   return (
     <main>
